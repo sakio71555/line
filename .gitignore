@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+node_modules/
+.npm-cache/
+dist/
+build/
+
+.DS_Store
+
+# Local imported data may contain phone numbers, emails, or LINE history.
+data/*
+!data/.gitkeep
