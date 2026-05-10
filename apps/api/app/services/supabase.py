@@ -867,6 +867,25 @@ def fetch_vehicle_availabilities(client: SupabaseRestClient, *, limit: int = 100
     return response.json()
 
 
+def fetch_admin_console_vehicle_availabilities(
+    client: SupabaseRestClient,
+    *,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    response = httpx.get(
+        f"{client.rest_url}/vehicle_availabilities",
+        params={
+            "select": VEHICLE_AVAILABILITY_SELECT,
+            "order": "created_at.desc",
+            "limit": str(min(max(limit, 1), 1000)),
+        },
+        headers=client.headers,
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def fetch_job_by_id(client: SupabaseRestClient, job_id: str) -> Optional[dict[str, Any]]:
     response = httpx.get(
         f"{client.rest_url}/jobs",
@@ -975,6 +994,21 @@ def fetch_admin_jobs(client: SupabaseRestClient, *, owner_line_user_id: Optional
     return response.json()
 
 
+def fetch_admin_console_jobs(client: SupabaseRestClient, *, limit: int = 1000) -> list[dict[str, Any]]:
+    response = httpx.get(
+        f"{client.rest_url}/jobs",
+        params={
+            "select": ADMIN_JOB_SELECT,
+            "order": "created_at.desc",
+            "limit": str(min(max(limit, 1), 1000)),
+        },
+        headers=client.headers,
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def fetch_admin_job_by_id(client: SupabaseRestClient, job_id: str) -> Optional[dict[str, Any]]:
     response = httpx.get(
         f"{client.rest_url}/jobs",
@@ -1015,6 +1049,8 @@ def delete_admin_job(
     *,
     deleted_by_line_user_id: Optional[str] = None,
     delete_reason: Optional[str] = "本人による投稿削除",
+    changed_by_name: Optional[str] = "owner",
+    source_type: str = "admin_manual",
 ) -> dict[str, Any]:
     old_job = fetch_admin_job_by_id(client, job_id)
     if not old_job:
@@ -1030,7 +1066,7 @@ def delete_admin_job(
             "deleted_by_line_user_id": deleted_by_line_user_id,
             "delete_reason": delete_reason,
             "status_updated_at": deleted_at,
-            "status_updated_by": "owner",
+            "status_updated_by": changed_by_name,
         },
     )
     insert_job_status_history(
@@ -1039,9 +1075,45 @@ def delete_admin_job(
         old_status=old_job.get("status"),
         new_status="deleted",
         reason=delete_reason,
-        source_type="admin_manual",
+        source_type=source_type,
         changed_by_line_user_id=deleted_by_line_user_id,
-        changed_by_name="owner",
+        changed_by_name=changed_by_name,
+    )
+    return job
+
+
+def restore_admin_console_job(
+    client: SupabaseRestClient,
+    job_id: str,
+    *,
+    restore_status: str = "open",
+    reason: Optional[str] = "管理者による復元",
+) -> dict[str, Any]:
+    old_job = fetch_admin_job_by_id(client, job_id)
+    if not old_job:
+        return {}
+
+    restored_at = datetime.now(timezone.utc).isoformat()
+    job = update_admin_job(
+        client,
+        job_id,
+        {
+            "status": restore_status,
+            "deleted_at": None,
+            "deleted_by_line_user_id": None,
+            "delete_reason": None,
+            "status_updated_at": restored_at,
+            "status_updated_by": "admin_console",
+        },
+    )
+    insert_job_status_history(
+        client,
+        job_id=job_id,
+        old_status=old_job.get("status"),
+        new_status=restore_status,
+        reason=reason,
+        source_type="admin_console",
+        changed_by_name="admin_console",
     )
     return job
 

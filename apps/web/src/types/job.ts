@@ -114,6 +114,9 @@ export type Job = {
   deleted_at?: string | null;
   deleted_by_line_user_id?: string | null;
   delete_reason?: string | null;
+  notify_group_id?: string | null;
+  notified_at?: string | null;
+  notify_error?: string | null;
   created_at: string;
   updated_at?: string | null;
 };

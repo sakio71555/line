@@ -317,6 +317,8 @@ LINE_LOGIN_CHANNEL_SECRET=
 LIFF_ID=
 LIFF_BASE_URL=
 RICH_MENU_IMAGE_PATH=assets/line-rich-menu.png
+ADMIN_CONSOLE_TOKEN=
+ADMIN_CONSOLE_PASSWORD=
 ```
 
 | 変数名 | 用途 |
@@ -336,6 +338,8 @@ RICH_MENU_IMAGE_PATH=assets/line-rich-menu.png
 | `LIFF_ID` | Botが個別チャットへ送るLIFFリンク生成に使うLIFF IDです。バックエンド側でURL生成に使います。 |
 | `LIFF_BASE_URL` | Botが送るLIFF URLのベースです。設定されている場合は `LIFF_ID` より優先されます。 |
 | `RICH_MENU_IMAGE_PATH` | Messaging APIでアップロードするリッチメニュー画像のパスです。標準は `assets/line-rich-menu.png` です。 |
+| `ADMIN_CONSOLE_TOKEN` | PC運営者管理ページの簡易認証トークンです。バックエンド専用です。 |
+| `ADMIN_CONSOLE_PASSWORD` | PC運営者管理ページの簡易認証パスワードです。`ADMIN_CONSOLE_TOKEN` 未設定時に使います。バックエンド専用です。 |
 
 ### フロントエンド用
 
@@ -487,6 +491,46 @@ GET    /companies/search?q=検索語&limit=50
 ```
 
 `/distance/measure` は積地・卸地から走行距離を取得し、軽貨物の場合は貨物軽自動車運賃表の距離制運賃で標準運賃目安を返します。`MAPS_API_KEY` が未設定の場合でも案件投稿は止めず、距離取得API未設定として安全に返します。
+
+### PC運営者管理ページ
+
+LINE内の本人用管理画面とは別に、PCブラウザで直接開く運営者向けページがあります。通常のLIFFタブ、LINEリッチメニュー、グループ内メニューには表示しません。
+
+```text
+/admin-console
+?tab=admin_console
+```
+
+PC運営者ページはAPI側で `ADMIN_CONSOLE_TOKEN` または `ADMIN_CONSOLE_PASSWORD` を検証します。URLを知っているだけでは操作できません。開発段階の簡易認証なので、本番ではSupabase Auth、OAuth、Basic認証、IP制限などへの置き換えを推奨します。
+
+運営者ページでできること:
+
+```text
+全案件一覧
+status / posting_type / job_category / 車種 / 会社名 / 電話番号 / 投稿日 / 削除済み / 募集中 / 終了案件 の絞り込み
+会社名・担当者・電話番号・タイトル・本文・備考・積地・卸地のキーワード検索
+案件詳細確認
+案件編集
+status変更
+論理削除
+削除済み案件の復元
+空車一覧の閲覧
+企業検索ページへの導線
+```
+
+PC運営者APIは本人用管理APIとは分けています。すべて管理者認証が必須です。
+
+```text
+GET    /admin-console/jobs
+GET    /admin-console/jobs/{job_id}
+PATCH  /admin-console/jobs/{job_id}
+POST   /admin-console/jobs/{job_id}/status
+POST   /admin-console/jobs/{job_id}/delete
+POST   /admin-console/jobs/{job_id}/restore
+GET    /admin-console/vehicle-availabilities
+```
+
+LINE内本人用管理画面は従来どおり `scope=mine` とLIFF ID tokenで本人確認し、自分の投稿だけを表示・操作します。PC運営者ページは運営者トークンで全体管理する別導線です。
 
 ### LINE投稿分類
 

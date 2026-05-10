@@ -4,6 +4,7 @@ import { AppHeader } from "./components/AppHeader";
 import { getMissingFrontendEnv } from "./lib/env";
 import { useLiffProfile } from "./hooks/useLiffProfile";
 import { AdminJobsPage } from "./pages/AdminJobsPage";
+import { AdminConsolePage } from "./pages/AdminConsolePage";
 import { CompanySearchPage } from "./pages/CompanySearchPage";
 import { JobSubmissionPage } from "./pages/JobSubmissionPage";
 import { JobListPage } from "./pages/JobListPage";
@@ -18,7 +19,7 @@ const initialFilters: JobFilters = {
   reviewOnly: false,
 };
 
-type Tab = "jobs" | "submit" | "vehicle" | "admin" | "companies";
+type Tab = "jobs" | "submit" | "vehicle" | "admin" | "companies" | "admin_console";
 type ListView = "jobs" | "vehicles";
 
 const queryTabMap: Record<string, Tab> = {
@@ -28,9 +29,11 @@ const queryTabMap: Record<string, Tab> = {
   admin: "admin",
   companies: "companies",
   company: "companies",
+  admin_console: "admin_console",
 };
 
 function getInitialTab(): Tab {
+  if (window.location.pathname === "/admin-console") return "admin_console";
   const params = new URLSearchParams(window.location.search);
   const tab = params.get("tab");
   if (tab === "vehicles" || tab === "vehicle_availabilities") return "jobs";
@@ -59,6 +62,10 @@ function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [activeTab]);
+
+  if (activeTab === "admin_console") {
+    return <AdminConsolePage />;
+  }
 
   return (
     <div className="app">

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
     maps_api_key: Optional[str] = Field(default=None, alias="MAPS_API_KEY")
+    admin_console_token: Optional[str] = Field(default=None, alias="ADMIN_CONSOLE_TOKEN")
+    admin_console_password: Optional[str] = Field(default=None, alias="ADMIN_CONSOLE_PASSWORD")
 
     line_channel_secret: str = Field(alias="LINE_CHANNEL_SECRET")
     line_channel_access_token: Optional[str] = Field(default=None, alias="LINE_CHANNEL_ACCESS_TOKEN")

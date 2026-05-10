@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from .core.config import get_settings
 from .routers import (
     admin_jobs,
+    admin_console,
     admin_line_messages,
     admin_status_updates,
     companies,
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 
 app.include_router(line_webhook.router)
+app.include_router(admin_console.router)
 app.include_router(admin_jobs.router)
 app.include_router(admin_line_messages.router)
 app.include_router(admin_status_updates.router)
