@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { submitLiffVehicleAvailability, type LiffVehiclePayload } from "../lib/liffApi";
 import type { LiffProfileState } from "../lib/liff";
+import { vehicleTypeOptions } from "../constants/vehicleTypes";
 
 type Props = {
   profile: LiffProfileState;
@@ -67,13 +68,11 @@ export function VehicleAvailabilityPage({ profile }: Props) {
           <label>
             <span>車種</span>
             <select value={form.vehicle_type} onChange={(event) => update("vehicle_type", event.target.value)}>
-              <option value="軽バン">軽バン</option>
-              <option value="冷蔵軽貨物">冷蔵軽貨物</option>
-              <option value="1t">1t</option>
-              <option value="2t">2t</option>
-              <option value="4t">4t</option>
-              <option value="10t">10t</option>
-              <option value="その他">その他</option>
+              {vehicleTypeOptions.map((vehicleType) => (
+                <option value={vehicleType} key={vehicleType}>
+                  {vehicleType}
+                </option>
+              ))}
             </select>
           </label>
           <label>

@@ -1,7 +1,9 @@
 import { JobCard } from "../components/JobCard";
 import { JobFiltersPanel } from "../components/JobFilters";
 import type { JobFilters } from "../types/job";
-import { useJobs } from "../hooks/useJobs";
+import { useState } from "react";
+
+import { useJobs, type JobListStatusView } from "../hooks/useJobs";
 import { VehicleAvailabilityListPage } from "./VehicleAvailabilityListPage";
 
 type Props = {
@@ -12,7 +14,14 @@ type Props = {
 };
 
 export function JobListPage({ filters, onFiltersChange, listView, onListViewChange }: Props) {
-  const { jobs, loading, error, reload } = useJobs(filters);
+  const [statusView, setStatusView] = useState<JobListStatusView>("active");
+  const { jobs, loading, error, reload } = useJobs(filters, statusView);
+  const switchStatusView = (view: JobListStatusView) => {
+    setStatusView(view);
+    if (filters.status) {
+      onFiltersChange({ ...filters, status: "" });
+    }
+  };
 
   return (
     <main className="page-shell">
@@ -37,11 +46,28 @@ export function JobListPage({ filters, onFiltersChange, listView, onListViewChan
 
       {listView === "jobs" ? (
         <>
+          <div className="list-view-tabs job-status-tabs" role="tablist" aria-label="案件ステータス切り替え">
+            <button
+              type="button"
+              className={statusView === "active" ? "active" : ""}
+              onClick={() => switchStatusView("active")}
+            >
+              募集中
+            </button>
+            <button
+              type="button"
+              className={statusView === "ended" ? "active" : ""}
+              onClick={() => switchStatusView("ended")}
+            >
+              終了案件
+            </button>
+          </div>
+
           <JobFiltersPanel filters={filters} onChange={onFiltersChange} onRefresh={reload} />
 
           <section className="list-summary">
             <strong>{loading ? "読み込み中" : `${jobs.length}件`}</strong>
-            <span>公開中の案件を表示しています</span>
+            <span>{statusView === "ended" ? "終了した案件を表示しています" : "募集中の案件を表示しています"}</span>
           </section>
 
           {error ? <p className="notice notice-error">{error}</p> : null}
@@ -53,7 +79,9 @@ export function JobListPage({ filters, onFiltersChange, listView, onListViewChan
           </div>
 
           {!loading && jobs.length === 0 ? (
-            <p className="empty-state">条件に合う案件がありません。</p>
+            <p className="empty-state">
+              {statusView === "ended" ? "終了案件はありません。" : "募集中の案件はありません。"}
+            </p>
           ) : null}
         </>
       ) : null}

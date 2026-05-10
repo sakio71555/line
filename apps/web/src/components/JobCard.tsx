@@ -12,24 +12,38 @@ type Props = {
 export function JobCard({ job, compact = false }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const phoneNumber = displayPhoneNumber(job);
+  const otherPosting = isOtherPosting(job);
+  const bodyPreview = jobBodyText(job);
   return (
     <article className="job-card">
       <div className="job-card__top">
         <div>
           <p className="job-card__date">{jobScheduleLabel(job)}</p>
-          <h2 className="job-card__route">
-            {locationHeading(job, "pickup")}
-            <span>→</span>
-            {locationHeading(job, "delivery")}
-          </h2>
+          {otherPosting ? (
+            <h2 className="job-card__route">{otherHeading(job)}</h2>
+          ) : (
+            <h2 className="job-card__route">
+              {locationHeading(job, "pickup")}
+              <span>→</span>
+              {locationHeading(job, "delivery")}
+            </h2>
+          )}
         </div>
         <StatusBadge status={job.status} />
       </div>
 
+      {bodyPreview ? (
+        <section className="job-card__body-preview" aria-label="備考または案件本文">
+          <h3>{otherPosting ? "本文" : "備考"}</h3>
+          <p>{bodyPreview}</p>
+        </section>
+      ) : null}
+
       <dl className="job-card__summary">
         <SummaryField label="案件種別" value={jobCategoryLabel(job.job_category)} />
+        {otherPosting ? <SummaryField label="対象エリア" value={job.target_area} /> : null}
         <SummaryField label="車種" value={job.vehicle_type} />
-        <SummaryField label="荷物" value={job.cargo_type} fallback="荷物未定" />
+        <SummaryField label={otherPosting ? "内容メモ" : "荷物"} value={job.cargo_type} fallback={otherPosting ? "未入力" : "荷物未定"} />
         <SummaryField label="運賃" value={formatPrice(job.price)} />
         <SummaryField label="連絡先" wide>
           <span>{displayValue(job.company_name, "会社名未入力")}</span>
@@ -52,7 +66,10 @@ export function JobCard({ job, compact = false }: Props) {
       {detailsOpen ? (
         <div className="job-card__details">
           <JobCardSection title="案件情報">
+            <JobField label="投稿タイプ" value={otherPosting ? "その他案件" : "通常配送案件"} />
             <JobField label="案件種別" value={jobCategoryLabel(job.job_category)} />
+            <JobField label="タイトル" value={job.title} />
+            <JobField label="対象エリア" value={job.target_area} />
             <JobField label="ステータス" value={statusLabel(job.status)} />
             <JobField label="集荷日" value={pickupDateLabel(job)} />
             <JobField label="集荷時間" value={job.pickup_time_text ?? job.scheduled_time_text} />
@@ -92,16 +109,32 @@ export function JobCard({ job, compact = false }: Props) {
 
           <JobCardSection title="距離・標準運賃">
             <JobField label="走行距離" value={job.distance_text ?? distanceKmLabel(job.distance_km)} fallback="未計算" />
-            <JobField label="算出区分" value={job.fare_vehicle_label} fallback="未計算" />
+            <JobField label="車両区分" value={job.fare_vehicle_label} fallback="未計算" />
+            <JobField label="運輸局" value={transportRegionLabel(job.fare_region)} fallback="未判定" />
             <JobField label="標準運賃目安" value={formatOptionalYen(job.standard_fare_yen)} />
-            <JobField label="投稿運賃" value={formatPrice(job.price)} />
-            <JobField label="標準比" value={fareRatioLabel(job.fare_ratio_percent)} />
+            <JobField label="投稿運賃" value={formatPrice(job.posted_fare_yen ?? job.price)} />
+            <JobField label="標準比" value={fareRatioLabel(job)} />
             <JobField label="判定" value={job.fare_judgement} fallback="未計算" />
             <JobField label="計算メモ" value={job.fare_calc_note} />
+            <JobField
+              label="注意"
+              value="標準運賃目安は、一般貨物は令和6年3月告示の標準的な運賃、軽貨物は貨物軽自動車運送事業運賃料金表をもとにした概算です。"
+              wide
+            />
           </JobCardSection>
 
           <JobCardSection title="備考">
-            <JobField label="備考" value={job.notes} wide />
+            {otherPosting ? (
+              <>
+                <JobField label="本文" value={job.free_text} fallback="本文未入力" wide />
+                <JobField label="備考" value={job.notes} fallback="備考なし" wide />
+              </>
+            ) : (
+              <>
+                <JobField label="備考" value={job.notes} wide />
+                <JobField label="案件本文" value={job.free_text ?? job.raw_text} wide />
+              </>
+            )}
             <JobField label="予算メモ" value={job.budget_note} wide />
           </JobCardSection>
         </div>
@@ -185,6 +218,51 @@ function sourceLabel(sourceType: Job["source_type"]): string {
   return "取込元未定";
 }
 
+function isOtherPosting(job: Job): boolean {
+  return job.posting_type === "other" || Boolean(job.title || job.free_text || job.target_area);
+}
+
+function otherHeading(job: Job): string {
+  const title = displayValue(job.title, "");
+  const area = displayValue(job.target_area, "");
+  if (title && area) return `${title} / ${area}`;
+  if (title) return title;
+  if (area) return `その他案件 / ${area}`;
+  return `その他案件：${jobCategoryLabel(job.job_category)}`;
+}
+
+function jobBodyText(job: Job): string | null {
+  const record = job as unknown as Record<string, unknown>;
+  const candidates = isOtherPosting(job)
+    ? [
+        job.free_text,
+        job.notes,
+        job.title,
+        record.cargo_description,
+        job.cargo_type,
+        job.raw_text,
+        record.description,
+      ]
+    : [
+        job.notes,
+        record.cargo_description,
+        job.cargo_type,
+        job.free_text,
+        job.raw_text,
+        record.description,
+      ];
+  return firstFilledText(candidates);
+}
+
+function firstFilledText(candidates: unknown[]): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return null;
+}
+
 function contactMethodLabel(method: Job["contact_method"]): string {
   if (method === "phone") return "本文電話";
   if (method === "registered_phone") return "登録電話";
@@ -242,14 +320,29 @@ function distanceKmLabel(value: number | null | undefined): string | null {
   return value != null ? `約${Math.round(value)}km` : null;
 }
 
-function fareRatioLabel(value: number | null | undefined): string {
-  return value != null ? `${Math.round(value)}%` : "未計算";
+function fareRatioLabel(job: Job): string {
+  if (job.fare_ratio_text) return job.fare_ratio_text;
+  return job.fare_ratio_percent != null ? `${Math.round(job.fare_ratio_percent)}%` : "未計算";
 }
 
 function fareRatioSummary(job: Job): string {
+  if (job.fare_ratio_text) {
+    return job.fare_judgement ? `${job.fare_ratio_text}（${job.fare_judgement}）` : job.fare_ratio_text;
+  }
   if (job.fare_ratio_percent == null) return "未計算";
   const ratio = `${Math.round(job.fare_ratio_percent)}%`;
   return job.fare_judgement ? `${ratio}（${job.fare_judgement}）` : ratio;
+}
+
+function transportRegionLabel(region: string | null | undefined): string | null {
+  if (!region) return null;
+  return {
+    kanto: "関東",
+    kinki: "近畿",
+    chugoku: "中国",
+    shikoku: "四国",
+    kyushu: "九州",
+  }[region] ?? region;
 }
 
 function formatOptionalYen(value: number | null | undefined): string {

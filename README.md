@@ -574,3 +574,119 @@ review_required
 ```
 
 `confidence` が低い場合、または `missing_fields` がある場合は `review_required = true` になり、`analysis_status = 'needs_review'` になります。OpenAIの結果は自動確定ではなく、管理者の確認・修正を前提にしています。
+
+## 運用整理メモ
+
+### status
+
+`jobs.status` は以下の意味で扱います。画面表示とLINE通知ではこの表示名に合わせます。
+
+```text
+open        = 募集中
+assigned    = 手配完了
+closed      = 募集終了
+completed   = 完了
+cancelled   = キャンセル
+negotiating = 交渉中
+in_progress = 進行中
+deleted     = 削除済み
+hidden      = 非公開
+needs_review = 確認待ち
+```
+
+通常の案件一覧はタブで分けます。
+
+```text
+募集中: open
+終了案件: assigned, closed, completed, cancelled
+```
+
+`negotiating` と `in_progress` はLINEグループ由来・管理運用で使う可能性があるため残していますが、公開一覧での扱いは要運用確認です。`deleted` と `hidden` は通常一覧には表示しません。
+
+### 論理削除
+
+管理画面の「投稿を削除する」は物理削除ではなく論理削除です。本人確認後、以下を更新して通常一覧・終了案件一覧・管理画面から非表示にします。
+
+```text
+status = deleted
+deleted_at
+deleted_by_line_user_id
+delete_reason
+```
+
+LINE通知済み案件との整合性と誤削除時の確認を優先するため、DB行は残します。
+
+### posting_type
+
+`posting_type` は入力フォームの種類を表します。
+
+```text
+delivery = 通常配送案件。積地・卸地・走行距離・標準運賃目安の計算対象。
+other    = その他案件。自由本文中心。積地・卸地なしでも投稿可能。
+```
+
+その他案件では `free_text` を本文、`notes` を備考として扱います。通常配送案件では `notes`、荷物情報、`raw_text` の順で本文プレビューに使います。
+
+### job_category
+
+`job_category` は案件種別です。
+
+```text
+spot               = スポット便
+charter            = チャーター
+regular            = 定期便
+work               = 常用
+driver_recruitment = ドライバー募集
+referral_request   = 案件紹介依頼
+other              = その他
+```
+
+### 主要テーブル
+
+```text
+jobs                   案件本体。投稿種別、案件種別、status、積地/卸地、連絡先、距離/標準運賃、その他案件本文、削除情報を持つ。
+vehicle_availabilities 空車情報。jobs には入れない。
+job_status_updates     LINE上の終了・完了報告候補。適用するまで jobs.status は変えない。
+job_status_history     管理操作によるstatus変更履歴。
+line_messages          LINE Webhookや過去ログ取込の原本。
+line_users             LINE投稿者・連絡先のユーザーマスター。
+line_liff_sessions     グループ起点LIFF起動のsession_id管理。
+```
+
+### 標準運賃目安
+
+表示は必ず「標準運賃目安」とし、「適正価格」とは断定しません。
+
+```text
+軽バン / 冷蔵軽貨物 / 冷凍軽貨物:
+  貨物軽自動車運送事業運賃料金表をもとに概算
+
+2t / 4t / 10t / トレーラー:
+  data/standard_truck_fares_2024.json の令和6年3月告示版データをもとに概算
+```
+
+冷蔵軽貨物・冷凍軽貨物は軽貨物として計算しますが、冷蔵・冷凍設備等の追加条件は含みません。住所が市区町村までの場合、走行距離と標準運賃目安は概算です。
+
+### LINE通知
+
+LIFF投稿後のLINEグループ通知は要約型です。通常配送案件は案件種別、区間、車種、運賃、標準比、連絡先だけを送ります。その他案件は案件種別、タイトル、エリア、車種、運賃、連絡先だけを送り、本文や備考の全文は案件一覧で確認します。
+
+### migration実行順
+
+Supabase SQL Editorでは既存migrationの順番を守って実行してください。最近追加された主要migrationは以下です。
+
+```text
+011_jobs_phone_number.sql
+012_jobs_distance_fare.sql
+013_jobs_location_detail_fields.sql
+014_jobs_closed_status.sql
+015_jobs_posted_fare_yen.sql
+016_jobs_other_posting_fields.sql
+017_jobs_logical_delete_status_cleanup.sql
+```
+
+SQL Editorでmigrationを実行したあと、PostgRESTのschema cacheが古い場合は以下を実行してください。
+
+```sql
+notify pgrst, 'reload schema';
+```

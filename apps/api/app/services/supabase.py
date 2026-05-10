@@ -43,6 +43,10 @@ LIFF_JOB_INSERT_COLUMNS = frozenset(
         "source_group_id",
         "source_line_message_id",
         "raw_text",
+        "posting_type",
+        "title",
+        "free_text",
+        "target_area",
         "job_category",
         "pickup_location",
         "delivery_location",
@@ -60,11 +64,13 @@ LIFF_JOB_INSERT_COLUMNS = frozenset(
         "vehicle_count",
         "cargo_type",
         "price",
+        "posted_fare_yen",
         "distance_km",
         "distance_text",
         "distance_source",
         "standard_fare_yen",
         "fare_ratio_percent",
+        "fare_ratio_text",
         "fare_judgement",
         "fare_calc_status",
         "fare_calc_note",
@@ -104,6 +110,10 @@ ADMIN_JOB_SELECT = ",".join(
         "source_user_id",
         "source_message_id",
         "raw_text",
+        "posting_type",
+        "title",
+        "free_text",
+        "target_area",
         "job_category",
         "pickup_location",
         "delivery_location",
@@ -130,11 +140,13 @@ ADMIN_JOB_SELECT = ",".join(
         "vehicle_count",
         "cargo_type",
         "price",
+        "posted_fare_yen",
         "distance_km",
         "distance_text",
         "distance_source",
         "standard_fare_yen",
         "fare_ratio_percent",
+        "fare_ratio_text",
         "fare_judgement",
         "fare_calc_status",
         "fare_calc_note",
@@ -171,6 +183,9 @@ ADMIN_JOB_SELECT = ",".join(
         "closed_reason",
         "closed_reported_by_line_user_id",
         "closed_reported_at",
+        "deleted_at",
+        "deleted_by_line_user_id",
+        "delete_reason",
         "notify_group_id",
         "notified_at",
         "notify_error",
@@ -383,6 +398,29 @@ def update_rows(
             table=table,
             exc=exc,
             payload_keys=sorted(compact_payload.keys()),
+        )
+    return response.json()
+
+
+def delete_rows(
+    client: SupabaseRestClient,
+    table: str,
+    filters: dict[str, str],
+) -> list[dict[str, Any]]:
+    try:
+        response = httpx.delete(
+            f"{client.rest_url}/{table}",
+            params=filters,
+            headers={**client.headers, "Prefer": "return=representation"},
+            timeout=15,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise_supabase_request_error(
+            operation="delete",
+            table=table,
+            exc=exc,
+            payload_keys=[],
         )
     return response.json()
 
@@ -654,6 +692,8 @@ def create_liff_job(
             )
         except Exception:
             pass
+    posting_type = form.posting_type or "delivery"
+    is_other_posting = posting_type == "other"
     pickup_location = " ".join(
         value for value in [form.pickup_prefecture, form.pickup_city, form.pickup_address] if value
     )
@@ -662,15 +702,25 @@ def create_liff_job(
         for value in [form.delivery_prefecture, form.delivery_city, form.delivery_address]
         if value
     )
+    fare_calc_status = form.fare_calc_status or "not_calculated"
+    if is_other_posting and fare_calc_status == "not_calculated":
+        fare_calc_status = "not_applicable"
+    fare_calc_note = form.fare_calc_note or (
+        "積地・卸地を指定しない案件のため" if is_other_posting else None
+    )
     raw_text_parts = [
+        f"投稿タイプ: {posting_type}",
         f"案件種別: {form.job_category}",
+        f"タイトル: {form.title or ''}",
+        f"対象エリア: {form.target_area or ''}",
+        f"案件本文: {form.free_text or ''}",
         f"積地: {pickup_location}",
         f"卸地: {delivery_location}",
         f"集荷日: {form.scheduled_date or ''}",
         f"集荷時間: {form.scheduled_time_text or ''}",
         f"納品日: {form.delivery_date or ''}",
         f"納品時間: {form.delivery_time_text or ''}",
-        f"車種: {form.vehicle_type}",
+        f"車種: {form.vehicle_type or ''}",
         f"台数: {form.vehicle_count}",
         f"荷物: {form.cargo_type or ''}",
         f"運賃: {form.price if form.price is not None else ''}",
@@ -690,9 +740,13 @@ def create_liff_job(
         "source_group_id": source_group_id,
         "source_line_message_id": source_line_message_id,
         "raw_text": "\n".join(raw_text_parts),
+        "posting_type": posting_type,
+        "title": form.title,
+        "free_text": form.free_text,
+        "target_area": form.target_area,
         "job_category": form.job_category,
-        "pickup_location": pickup_location,
-        "delivery_location": delivery_location,
+        "pickup_location": pickup_location or None,
+        "delivery_location": delivery_location or None,
         "pickup_prefecture": form.pickup_prefecture,
         "pickup_city": form.pickup_city,
         "pickup_address": form.pickup_address,
@@ -707,14 +761,16 @@ def create_liff_job(
         "vehicle_count": form.vehicle_count,
         "cargo_type": form.cargo_type,
         "price": form.price,
+        "posted_fare_yen": form.posted_fare_yen if form.posted_fare_yen is not None else form.price,
         "distance_km": form.distance_km,
         "distance_text": form.distance_text,
         "distance_source": form.distance_source,
         "standard_fare_yen": form.standard_fare_yen,
         "fare_ratio_percent": form.fare_ratio_percent,
+        "fare_ratio_text": form.fare_ratio_text,
         "fare_judgement": form.fare_judgement,
-        "fare_calc_status": form.fare_calc_status or "not_calculated",
-        "fare_calc_note": form.fare_calc_note,
+        "fare_calc_status": fare_calc_status,
+        "fare_calc_note": fare_calc_note,
         "fare_region": form.fare_region,
         "fare_vehicle_class": form.fare_vehicle_class,
         "fare_vehicle_label": form.fare_vehicle_label,
@@ -901,7 +957,8 @@ def mark_job_analysis_failed(
 def fetch_admin_jobs(client: SupabaseRestClient, *, owner_line_user_id: Optional[str] = None) -> list[dict[str, Any]]:
     params = {
         "select": ADMIN_JOB_SELECT,
-        "status": "in.(needs_review,open,negotiating,assigned,in_progress,completed,cancelled,hidden)",
+        "status": "in.(needs_review,open,negotiating,assigned,in_progress,completed,cancelled,closed,hidden)",
+        "deleted_at": "is.null",
         "order": "created_at.desc",
         "limit": "500",
     }
@@ -950,6 +1007,43 @@ def update_admin_job(
     response.raise_for_status()
     data = response.json()
     return data[0] if data else {}
+
+
+def delete_admin_job(
+    client: SupabaseRestClient,
+    job_id: str,
+    *,
+    deleted_by_line_user_id: Optional[str] = None,
+    delete_reason: Optional[str] = "本人による投稿削除",
+) -> dict[str, Any]:
+    old_job = fetch_admin_job_by_id(client, job_id)
+    if not old_job:
+        return {}
+
+    deleted_at = datetime.now(timezone.utc).isoformat()
+    job = update_admin_job(
+        client,
+        job_id,
+        {
+            "status": "deleted",
+            "deleted_at": deleted_at,
+            "deleted_by_line_user_id": deleted_by_line_user_id,
+            "delete_reason": delete_reason,
+            "status_updated_at": deleted_at,
+            "status_updated_by": "owner",
+        },
+    )
+    insert_job_status_history(
+        client,
+        job_id=job_id,
+        old_status=old_job.get("status"),
+        new_status="deleted",
+        reason=delete_reason,
+        source_type="admin_manual",
+        changed_by_line_user_id=deleted_by_line_user_id,
+        changed_by_name="owner",
+    )
+    return job
 
 
 def verify_admin_job(client: SupabaseRestClient, job_id: str) -> dict[str, Any]:
@@ -1016,7 +1110,7 @@ def set_admin_job_status(
         payload["completed_at"] = datetime.now(timezone.utc).isoformat()
     if new_status == "cancelled":
         payload["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-    if new_status in {"cancelled", "hidden"}:
+    if new_status in {"cancelled", "closed", "hidden"}:
         payload["closed_reason"] = reason
 
     job = update_admin_job(client, job_id, payload)

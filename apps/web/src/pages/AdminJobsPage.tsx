@@ -1,17 +1,18 @@
-import { EyeOff, Pencil, RefreshCw, ShieldCheck } from "lucide-react";
+import { Pencil, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminJobEditor } from "../components/AdminJobEditor";
 import { JobCard } from "../components/JobCard";
 import {
   applyStatusUpdateCandidate,
+  arrangeAdminJob,
+  closeAdminJob,
+  deleteAdminJob,
   fetchAdminLineMessages,
   fetchStatusUpdateCandidates,
-  hideAdminJob,
   ignoreStatusUpdateCandidate,
   type AdminJobUpdatePayload,
   updateAdminJob,
-  verifyAdminJob,
 } from "../lib/adminApi";
 import type { LiffProfileState } from "../lib/liff";
 import { useAdminJobs } from "../hooks/useAdminJobs";
@@ -104,11 +105,12 @@ export function AdminJobsPage({ filters, profile }: Props) {
     void loadLineMessages();
   };
 
-  const runAction = async (action: () => Promise<Job>) => {
+  const runAction = async (action: () => Promise<Job>, onSuccess?: () => void) => {
     setSaving(true);
     setActionError(null);
     try {
       replaceJob(await action());
+      onSuccess?.();
     } catch (exc) {
       setActionError(errorMessage(exc, "案件の更新に失敗しました"));
     } finally {
@@ -118,15 +120,45 @@ export function AdminJobsPage({ filters, profile }: Props) {
 
   const handleSave = (payload: AdminJobUpdatePayload) => {
     if (!selectedJobId) return;
-    void runAction(() => updateAdminJob(selectedJobId, payload, adminContext));
+    void runAction(() => updateAdminJob(selectedJobId, payload, adminContext), () => setSelectedJobId(null));
   };
 
-  const handleVerify = (jobId: string) => {
-    void runAction(() => verifyAdminJob(jobId, adminContext));
+  const handleEditJob = (jobId: string) => {
+    setSelectedJobId(jobId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleHide = (jobId: string) => {
-    void runAction(() => hideAdminJob(jobId, adminContext));
+  const handleArrangeJob = (jobId: string) => {
+    if (!window.confirm("この案件を手配完了にしますか？")) {
+      return;
+    }
+    void runAction(() => arrangeAdminJob(jobId, adminContext));
+  };
+
+  const handleCloseJob = (jobId: string) => {
+    if (!window.confirm("この案件を募集終了にしますか？")) {
+      return;
+    }
+    void runAction(() => closeAdminJob(jobId, adminContext));
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    if (!window.confirm("この投稿を削除済みにして一覧から非表示にします。実行しますか？")) {
+      return;
+    }
+    setSaving(true);
+    setActionError(null);
+    deleteAdminJob(jobId, adminContext)
+      .then(() => {
+        setJobs((current) => current.filter((job) => job.id !== jobId));
+        if (selectedJobId === jobId) {
+          setSelectedJobId(null);
+        }
+      })
+      .catch((exc) => {
+        setActionError(errorMessage(exc, "投稿の削除に失敗しました"));
+      })
+      .finally(() => setSaving(false));
   };
 
   const handleApplyStatusUpdate = (
@@ -192,10 +224,21 @@ export function AdminJobsPage({ filters, profile }: Props) {
       </section>
 
       {!profile.idToken ? (
-        <p className="notice notice-warning">自分の投稿を確認するにはLINE内で開き直してください。</p>
+        <p className="notice notice-warning">
+          管理画面はLINEアプリ内から開いてください。本人確認のため、通常ブラウザでは管理操作できません。
+        </p>
       ) : null}
 
       {actionError ? <p className="notice notice-error">{actionError}</p> : null}
+
+      {selectedJob ? (
+        <AdminJobEditor
+          job={selectedJob}
+          saving={saving}
+          onSave={handleSave}
+          onClose={() => setSelectedJobId(null)}
+        />
+      ) : null}
 
       <section className="status-updates-panel">
         <div className="status-updates-panel__header">
@@ -254,7 +297,7 @@ export function AdminJobsPage({ filters, profile }: Props) {
                 </div>
                 <div className="status-update-card__actions">
                   <button type="button" onClick={() => handleApplyStatusUpdate(update, "assigned")} disabled={saving}>
-                    手配済みにする
+                    手配完了にする
                   </button>
                   <button type="button" onClick={() => handleApplyStatusUpdate(update, "completed")} disabled={saving}>
                     完了にする
@@ -290,9 +333,10 @@ export function AdminJobsPage({ filters, profile }: Props) {
                 key={job.id}
                 job={job}
                 saving={saving}
-                onEdit={() => setSelectedJobId(job.id)}
-                onVerify={() => handleVerify(job.id)}
-                onHide={() => handleHide(job.id)}
+                onEdit={() => handleEditJob(job.id)}
+                onArrangeJob={() => handleArrangeJob(job.id)}
+                onCloseJob={() => handleCloseJob(job.id)}
+                onDeleteJob={() => handleDeleteJob(job.id)}
               />
             ))}
           </div>
@@ -303,7 +347,7 @@ export function AdminJobsPage({ filters, profile }: Props) {
         <div className="status-updates-panel__header">
           <div>
             <h2>公開中・非公開・完了済み案件</h2>
-            <p>公開後の案件、非公開、完了済みを確認できます。</p>
+            <p>公開後の案件、募集終了、非公開、完了済みを確認できます。</p>
           </div>
         </div>
         {otherJobs.length === 0 && !error ? (
@@ -316,9 +360,10 @@ export function AdminJobsPage({ filters, profile }: Props) {
                 key={job.id}
                 job={job}
                 saving={saving}
-                onEdit={() => setSelectedJobId(job.id)}
-                onVerify={() => handleVerify(job.id)}
-                onHide={() => handleHide(job.id)}
+                onEdit={() => handleEditJob(job.id)}
+                onArrangeJob={() => handleArrangeJob(job.id)}
+                onCloseJob={() => handleCloseJob(job.id)}
+                onDeleteJob={() => handleDeleteJob(job.id)}
               />
             ))}
           </div>
@@ -373,17 +418,6 @@ export function AdminJobsPage({ filters, profile }: Props) {
         ) : null}
       </section>
 
-      {selectedJob ? (
-        <AdminJobEditor
-          job={selectedJob}
-          saving={saving}
-          onSave={handleSave}
-          onVerify={() => handleVerify(selectedJob.id)}
-          onHide={() => handleHide(selectedJob.id)}
-          onClose={() => setSelectedJobId(null)}
-        />
-      ) : null}
-
     </main>
   );
 }
@@ -392,31 +426,42 @@ type AdminJobRowProps = {
   job: Job;
   saving: boolean;
   onEdit: () => void;
-  onVerify: () => void;
-  onHide: () => void;
+  onArrangeJob: () => void;
+  onCloseJob: () => void;
+  onDeleteJob: () => void;
 };
 
-function AdminJobRow({ job, saving, onEdit, onVerify, onHide }: AdminJobRowProps) {
+function AdminJobRow({ job, saving, onEdit, onArrangeJob, onCloseJob, onDeleteJob }: AdminJobRowProps) {
   return (
     <div className="admin-job-row">
       <JobCard job={job} compact />
       <div className="admin-job-row__actions">
         <button type="button" onClick={onEdit}>
           <Pencil aria-hidden="true" size={16} />
-          編集
+          修正する
         </button>
-        <button type="button" onClick={onVerify} disabled={saving}>
-          <ShieldCheck aria-hidden="true" size={16} />
-          確認完了
+        <button
+          type="button"
+          onClick={onArrangeJob}
+          disabled={saving || job.status === "assigned" || job.status === "closed"}
+        >
+          手配完了にする
         </button>
         <button
           type="button"
           className="danger-action"
-          onClick={onHide}
-          disabled={saving || job.status === "hidden"}
+          onClick={onCloseJob}
+          disabled={saving || job.status === "closed"}
         >
-          <EyeOff aria-hidden="true" size={16} />
-          非公開
+          募集終了にする
+        </button>
+        <button
+          type="button"
+          className="danger-action danger-action--delete"
+          onClick={onDeleteJob}
+          disabled={saving}
+        >
+          投稿を削除する
         </button>
       </div>
     </div>
@@ -527,6 +572,9 @@ function lineMessagePriority(message: LineMessage): number {
 }
 
 function isReviewJob(job: Job): boolean {
+  if (job.status === "closed") {
+    return false;
+  }
   if (job.source_type === "liff_form" && job.status === "open") {
     return false;
   }

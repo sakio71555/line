@@ -1,21 +1,26 @@
 import { webEnv } from "./env";
 
 export type LiffJobPayload = {
-  job_category: "spot" | "charter" | "regular" | "work" | "other";
-  pickup_prefecture: string;
-  pickup_city: string;
+  posting_type: "delivery" | "other";
+  job_category: "spot" | "charter" | "regular" | "work" | "driver_recruitment" | "referral_request" | "other";
+  title: string | null;
+  free_text: string | null;
+  target_area: string | null;
+  pickup_prefecture: string | null;
+  pickup_city: string | null;
   pickup_address: string | null;
-  delivery_prefecture: string;
-  delivery_city: string;
+  delivery_prefecture: string | null;
+  delivery_city: string | null;
   delivery_address: string | null;
   scheduled_date: string | null;
   scheduled_time_text: string | null;
   delivery_date: string | null;
   delivery_time_text: string | null;
-  vehicle_type: string;
+  vehicle_type: string | null;
   vehicle_count: number;
   cargo_type: string | null;
   price: number | null;
+  posted_fare_yen: number | null;
   tax_type: "税別" | "税込" | "不明";
   highway_fee_note: string | null;
   fee_note: string | null;
@@ -25,6 +30,7 @@ export type LiffJobPayload = {
   distance_source: string | null;
   standard_fare_yen: number | null;
   fare_ratio_percent: number | null;
+  fare_ratio_text?: string | null;
   fare_judgement: string | null;
   fare_calc_status: string | null;
   fare_calc_note: string | null;
@@ -115,14 +121,18 @@ export type VehicleAvailabilityListResponse = {
 export type DistanceMeasurePayload = {
   pickup_address: string;
   delivery_address: string;
+  pickup_prefecture?: string | null;
   vehicle_type: string;
   posted_fare: string | null;
+  pickup_detail_missing?: boolean;
+  delivery_detail_missing?: boolean;
 };
 
 export type DistanceMeasureResult = {
   distance_km: number | null;
   distance_text: string | null;
   distance_source: string | null;
+  posted_fare_yen: number | null;
   standard_fare_yen: number | null;
   fare_ratio_percent: number | null;
   fare_ratio_text: string | null;
@@ -131,6 +141,7 @@ export type DistanceMeasureResult = {
   fare_vehicle_label: string | null;
   fare_calc_status: string;
   fare_calc_note: string | null;
+  fare_region?: string | null;
 };
 
 function apiUrl(path: string): string {

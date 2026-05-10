@@ -166,11 +166,15 @@ class AdminStatusUpdatesTest(unittest.TestCase):
         fallback = httpx.Response(200, json=[fallback_row], request=request)
 
         with (
+            patch("apps.api.app.routers.admin_status_updates.verify_line_id_token", return_value={"line_user_id": "Uowner", "display_name": "Owner"}),
+            patch("apps.api.app.routers.admin_status_updates.fetch_status_update_by_id", return_value=status_update_row(possible_job_id="job-id")),
+            patch("apps.api.app.routers.admin_status_updates.fetch_admin_job_by_id", return_value={"id": "job-id", "created_by_line_user_id": "Uowner"}),
             patch("apps.api.app.routers.admin_status_updates.get_supabase_client", return_value=self.supabase),
             patch("apps.api.app.services.supabase.httpx.patch", side_effect=[missing_column, fallback]),
         ):
             response = self.client.post(
-                "/admin/status-updates/status-update-id/ignore?scope=all",
+                "/admin/status-updates/status-update-id/ignore?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
                 json={"reviewed_by": "admin"},
             )
 

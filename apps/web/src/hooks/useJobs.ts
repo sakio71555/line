@@ -7,6 +7,11 @@ const JOB_SELECT = [
   "id",
   "source_type",
   "source_line_message_id",
+  "raw_text",
+  "posting_type",
+  "title",
+  "free_text",
+  "target_area",
   "job_category",
   "pickup_location",
   "delivery_location",
@@ -31,11 +36,13 @@ const JOB_SELECT = [
   "vehicle_count",
   "cargo_type",
   "price",
+  "posted_fare_yen",
   "distance_km",
   "distance_text",
   "distance_source",
   "standard_fare_yen",
   "fare_ratio_percent",
+  "fare_ratio_text",
   "fare_judgement",
   "fare_calc_status",
   "fare_calc_note",
@@ -59,11 +66,19 @@ const JOB_SELECT = [
   "status",
   "analysis_status",
   "review_required",
+  "deleted_at",
+  "deleted_by_line_user_id",
+  "delete_reason",
   "created_at",
   "updated_at",
 ].join(",");
 
-export function useJobs(filters: JobFilters) {
+export type JobListStatusView = "active" | "ended";
+
+const ACTIVE_STATUSES = ["open"];
+const ENDED_STATUSES = ["assigned", "closed", "completed", "cancelled"];
+
+export function useJobs(filters: JobFilters, statusView: JobListStatusView = "active") {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +96,8 @@ export function useJobs(filters: JobFilters) {
     let query = supabase
       .from("jobs")
       .select(JOB_SELECT)
-      .in("status", ["open", "negotiating", "assigned", "in_progress"])
+      .in("status", statusView === "ended" ? ENDED_STATUSES : ACTIVE_STATUSES)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -119,7 +135,7 @@ export function useJobs(filters: JobFilters) {
     }
 
     setLoading(false);
-  }, [filters]);
+  }, [filters, statusView]);
 
   useEffect(() => {
     void loadJobs();
