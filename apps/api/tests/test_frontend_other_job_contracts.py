@@ -58,6 +58,19 @@ class FrontendOtherJobContractsTest(unittest.TestCase):
         self.assertIn("管理画面はLINEアプリ内から開いてください", admin_source)
         self.assertIn("通常ブラウザでは管理操作できません", admin_source)
 
+    def test_admin_full_location_fields_are_readonly_generated_previews(self) -> None:
+        source = (ROOT / "apps/web/src/components/AdminJobEditor.tsx").read_text(encoding="utf-8")
+
+        self.assertIn("const pickupLocationPreview = buildLocation", source)
+        self.assertIn("const deliveryLocationPreview =", source)
+        self.assertIn("value={pickupLocationPreview}", source)
+        self.assertIn("value={deliveryLocationPreview}", source)
+        self.assertIn("readOnly", source)
+        self.assertIn("積地全体（自動）", source)
+        self.assertIn("卸地全体（自動）", source)
+        self.assertIn("pickup_location: pickupLocation || form.pickup_location || null", source)
+        self.assertIn("delivery_location: deliveryLocation || form.delivery_location || null", source)
+
 
 if __name__ == "__main__":
     unittest.main()

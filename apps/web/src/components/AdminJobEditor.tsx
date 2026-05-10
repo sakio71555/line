@@ -243,6 +243,10 @@ export function AdminJobEditor({ job, saving, onSave, onClose }: Props) {
     }
   };
 
+  const pickupLocationPreview = buildLocation(form.pickup_prefecture, form.pickup_city, form.pickup_address) || form.pickup_location;
+  const deliveryLocationPreview =
+    buildLocation(form.delivery_prefecture, form.delivery_city, form.delivery_address) || form.delivery_location;
+
   return (
     <section className="admin-editor" aria-label="案件編集フォーム">
       <div className="admin-editor__header">
@@ -292,10 +296,11 @@ export function AdminJobEditor({ job, saving, onSave, onClose }: Props) {
           <textarea value={form.free_text} onChange={(event) => update("free_text", event.target.value)} rows={5} />
         </label>
         <label>
-          <span>積地全体</span>
+          <span>積地全体（自動）</span>
           <input
-            value={form.pickup_location}
-            onChange={(event) => update("pickup_location", event.target.value)}
+            value={pickupLocationPreview}
+            readOnly
+            aria-readonly="true"
           />
         </label>
         <label>
@@ -320,10 +325,11 @@ export function AdminJobEditor({ job, saving, onSave, onClose }: Props) {
           />
         </label>
         <label>
-          <span>卸地全体</span>
+          <span>卸地全体（自動）</span>
           <input
-            value={form.delivery_location}
-            onChange={(event) => update("delivery_location", event.target.value)}
+            value={deliveryLocationPreview}
+            readOnly
+            aria-readonly="true"
           />
         </label>
         <label>
