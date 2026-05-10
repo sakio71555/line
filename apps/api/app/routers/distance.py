@@ -15,7 +15,8 @@ def measure_distance(payload: DistanceMeasureRequest, settings: Settings = Depen
         settings=settings,
         pickup_address=payload.pickup_address,
         delivery_address=payload.delivery_address,
+        pickup_prefecture=payload.pickup_prefecture,
         vehicle_type=payload.vehicle_type,
-        posted_fare=payload.posted_fare,
+        posted_fare=payload.effective_posted_fare(),
+        detail_address_missing=payload.pickup_detail_missing or payload.delivery_detail_missing,
     )
-

@@ -19,6 +19,8 @@ class LinePushTest(unittest.TestCase):
                 "vehicle_type": "4t",
                 "price": 8000,
                 "distance_text": "約92km",
+                "fare_vehicle_label": "貨物軽自動車",
+                "fare_region": "shikoku",
                 "standard_fare_yen": 13850,
                 "fare_ratio_percent": 122.7,
                 "fare_judgement": "やや高い",
@@ -33,15 +35,15 @@ class LinePushTest(unittest.TestCase):
         self.assertIn("【区間】", text)
         self.assertIn("大阪府 大阪市 → 埼玉県 日高市", text)
         self.assertIn("【車種】\n4t", text)
-        self.assertIn("【距離】\n約92km", text)
         self.assertIn("【運賃】\n8,000円", text)
-        self.assertIn("【標準運賃目安】\n13,850円", text)
         self.assertIn("【標準比】\n123%（やや高い）", text)
         self.assertIn("【連絡先】", text)
         self.assertIn("会社名：テスト運送", text)
         self.assertIn("担当者：山田", text)
         self.assertIn("電話：090-1234-5678", text)
-        self.assertIn("案件一覧から詳細をご確認ください。", text)
+        self.assertIn("詳細は案件一覧をご確認ください。", text)
+        self.assertNotIn("【標準運賃目安】", text)
+        self.assertNotIn("【計算メモ】", text)
         self.assertNotIn("管理者確認待ち", text)
 
     def test_build_liff_job_created_text_shows_blank_category_as_missing(self) -> None:
@@ -58,6 +60,31 @@ class LinePushTest(unittest.TestCase):
         )
 
         self.assertIn("【案件種別】\n未入力", text)
+
+    def test_build_liff_job_created_text_supports_other_posting(self) -> None:
+        text = build_liff_job_created_text(
+            {
+                "posting_type": "other",
+                "job_category": "driver_recruitment",
+                "title": "定期案件スタート",
+                "free_text": "老舗のお弁当をデパートやテレビ局、大使館、寺院などに配送できる方を探しています。",
+                "notes": "補足事項だけが先に出てはいけません。",
+                "target_area": "都内中心に一都三県",
+                "vehicle_type": "冷蔵軽貨物",
+                "price": 19000,
+                "company_name": "テスト運送",
+                "contact_name": "山田",
+                "phone_number": "090-1234-5678",
+            }
+        )
+
+        self.assertIn("【案件種別】\nドライバー募集", text)
+        self.assertIn("【タイトル】\n定期案件スタート", text)
+        self.assertIn("【エリア】\n都内中心に一都三県", text)
+        self.assertNotIn("【本文】", text)
+        self.assertNotIn("老舗のお弁当", text)
+        self.assertNotIn("補足事項だけが先に出てはいけません", text)
+        self.assertNotIn("【区間】", text)
 
     def test_push_uses_line_push_api_without_returning_secret(self) -> None:
         settings = SimpleNamespace(line_channel_access_token="dummy-token")

@@ -9,6 +9,7 @@ from ..core.config import Settings, get_settings
 from ..schemas.admin_jobs import AdminJobStatusUpdate, AdminJobUpdate
 from ..services.line_auth import LineAuthError, bearer_token, verify_line_id_token
 from ..services.supabase import (
+    delete_admin_job,
     fetch_admin_job_by_id,
     fetch_admin_jobs,
     get_supabase_client,
@@ -51,7 +52,13 @@ def list_admin_jobs(
 
 
 @router.get("/{job_id}")
-def get_admin_job(job_id: str) -> dict[str, dict]:
+def get_admin_job(
+    job_id: str,
+    scope: Literal["all", "mine"] = Query(default="mine"),
+    authorization: Optional[str] = Header(default=None),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, dict]:
+    authorize_job_action(job_id, scope, authorization, settings)
     try:
         job = fetch_admin_job_by_id(get_supabase_client(), job_id)
     except Exception as exc:
@@ -60,7 +67,7 @@ def get_admin_job(job_id: str) -> dict[str, dict]:
             detail="Failed to fetch job",
         ) from exc
 
-    if not job:
+    if not job or job.get("deleted_at") or job.get("status") == "deleted":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found",
@@ -83,6 +90,10 @@ def update_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No fields to update",
         )
+    if "phone_number" in update_payload:
+        phone_number = update_payload.get("phone_number")
+        update_payload["contact_phone"] = phone_number
+        update_payload["phone_numbers"] = [phone_number] if phone_number else []
 
     authorize_job_action(job_id, scope, authorization, settings)
 
@@ -92,6 +103,105 @@ def update_job(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to update job",
+        ) from exc
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    if job.get("deleted_at") or job.get("status") == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+
+    return {"job": job}
+
+
+@router.post("/{job_id}/close")
+def close_job(
+    job_id: str,
+    scope: Literal["all", "mine"] = Query(default="mine"),
+    authorization: Optional[str] = Header(default=None),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, dict]:
+    actor = authorize_job_action(job_id, scope, authorization, settings)
+    try:
+        job = set_admin_job_status(
+            get_supabase_client(),
+            job_id,
+            new_status="closed",
+            reason="本人による募集終了",
+            changed_by_line_user_id=actor.get("line_user_id"),
+            changed_by_name=actor.get("display_name") or "owner",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to close job",
+        ) from exc
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+
+    return {"job": job}
+
+
+@router.post("/{job_id}/arrange")
+def arrange_job(
+    job_id: str,
+    scope: Literal["all", "mine"] = Query(default="mine"),
+    authorization: Optional[str] = Header(default=None),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, dict]:
+    actor = authorize_job_action(job_id, scope, authorization, settings)
+    try:
+        job = set_admin_job_status(
+            get_supabase_client(),
+            job_id,
+            new_status="assigned",
+            reason="本人による手配完了",
+            changed_by_line_user_id=actor.get("line_user_id"),
+            changed_by_name=actor.get("display_name") or "owner",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to arrange job",
+        ) from exc
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+
+    return {"job": job}
+
+
+@router.delete("/{job_id}")
+def delete_job(
+    job_id: str,
+    scope: Literal["all", "mine"] = Query(default="mine"),
+    authorization: Optional[str] = Header(default=None),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, dict]:
+    actor = authorize_job_action(job_id, scope, authorization, settings)
+    try:
+        job = delete_admin_job(
+            get_supabase_client(),
+            job_id,
+            deleted_by_line_user_id=actor.get("line_user_id"),
+            delete_reason="本人による投稿削除",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to delete job",
         ) from exc
 
     if not job:
@@ -193,7 +303,16 @@ def authorize_job_action(
     settings: Settings,
 ) -> dict[str, str | None]:
     if scope != "mine":
-        return {"line_user_id": None, "display_name": None}
+        logger.info(
+            "Admin job authorization rejected endpoint=/admin/jobs scope=%s job_id=%s reason=mine_scope_required has_authorization=%s",
+            scope,
+            job_id,
+            bool(authorization),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="管理操作にはLINEログイン確認が必要です",
+        )
 
     try:
         auth_result = verify_line_id_token(settings, bearer_token(authorization))
@@ -210,6 +329,11 @@ def authorize_job_action(
 
     job = fetch_admin_job_by_id(get_supabase_client(), job_id)
     if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    if job.get("deleted_at") or job.get("status") == "deleted":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found",

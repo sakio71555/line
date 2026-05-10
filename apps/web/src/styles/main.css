@@ -164,6 +164,10 @@ button {
   color: #ffffff;
 }
 
+.job-status-tabs {
+  margin-top: -2px;
+}
+
 .page-shell {
   display: grid;
   gap: 12px;
@@ -338,6 +342,39 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   margin: 0;
+}
+
+.job-card__body-preview {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f5faf7;
+  border: 1px solid #d7e3db;
+}
+
+.job-card__body-preview h3,
+.job-card__body-preview p {
+  margin: 0;
+}
+
+.job-card__body-preview h3 {
+  color: #5d7467;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.job-card__body-preview p {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #24352b;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .job-card__summary-field {
@@ -641,6 +678,11 @@ button {
   color: #4b5550;
 }
 
+.badge-closed {
+  background: #f1e7d6;
+  color: #71512b;
+}
+
 .badge-completed,
 .badge-form_submitted {
   background: #e9e0ff;
@@ -694,6 +736,25 @@ button {
   margin-top: 4px;
   color: #5d7467;
   font-size: 13px;
+}
+
+.posting-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.posting-type-tabs button {
+  min-height: 42px;
+  border-radius: 8px;
+  background: #eef5f1;
+  color: #24352b;
+  font-weight: 900;
+}
+
+.posting-type-tabs button.active {
+  background: #16a65c;
+  color: #ffffff;
 }
 
 .status-updates-panel__actions {
@@ -1055,7 +1116,7 @@ button {
 
 .admin-job-row__actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1073,6 +1134,11 @@ button {
 .admin-editor__actions .danger-action {
   background: #ffe0dd;
   color: #9e3026;
+}
+
+.admin-job-row__actions .danger-action--delete {
+  background: #c9342c;
+  color: #ffffff;
 }
 
 .admin-editor__actions .primary-action {
@@ -1140,9 +1206,44 @@ button {
   grid-column: 1 / -1;
 }
 
+.admin-editor__distance {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d6e4db;
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.admin-editor__distance h3,
+.admin-editor__distance p {
+  margin: 0;
+}
+
+.admin-editor__distance h3 {
+  font-size: 14px;
+}
+
+.admin-editor__distance p {
+  margin-top: 5px;
+  color: #41584b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-editor__distance button {
+  min-height: 40px;
+  border-radius: 8px;
+  background: #dbe7df;
+  color: #24352b;
+  font-weight: 800;
+}
+
 .admin-editor__actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1190,6 +1291,7 @@ button {
 
   .admin-editor__grid,
   .admin-editor__actions,
+  .admin-editor__distance,
   .admin-job-row__actions,
   .admin-stats,
   .form-grid,

@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "version": "令和6年3月告示",
+    "source": "一般貨物自動車運送事業に係る標準的な運賃",
+    "source_url": "https://jta.or.jp/tariff-lp/",
+    "distance_rounding": "ceil_to_next_table_band",
+    "vehicle_classes": {
+      "small_2t": "小型車(2tクラス)",
+      "medium_4t": "中型車(4tクラス)",
+      "large_10t": "大型車(10tクラス)",
+      "trailer_20t": "トレーラー(20tクラス)"
+    }
+  },
+  "distance_based_fares": {
+    "kanto": {
+      "label": "関東運輸局",
+      "fares_by_km": {
+        "10": { "small_2t": 11840, "medium_4t": 14110, "large_10t": 18820, "trailer_20t": 23970 },
+        "20": { "small_2t": 12890, "medium_4t": 15340, "large_10t": 20440, "trailer_20t": 25950 },
+        "30": { "small_2t": 13850, "medium_4t": 16470, "large_10t": 21930, "trailer_20t": 27780 },
+        "40": { "small_2t": 14820, "medium_4t": 17600, "large_10t": 23430, "trailer_20t": 29620 },
+        "50": { "small_2t": 15780, "medium_4t": 18740, "large_10t": 24920, "trailer_20t": 31450 },
+        "60": { "small_2t": 17260, "medium_4t": 20480, "large_10t": 27220, "trailer_20t": 34260 },
+        "70": { "small_2t": 18740, "medium_4t": 22210, "large_10t": 29520, "trailer_20t": 37080 },
+        "80": { "small_2t": 20220, "medium_4t": 23950, "large_10t": 31820, "trailer_20t": 39890 },
+        "90": { "small_2t": 21700, "medium_4t": 25690, "large_10t": 34120, "trailer_20t": 42700 },
+        "100": { "small_2t": 23180, "medium_4t": 27420, "large_10t": 36420, "trailer_20t": 45520 },
+        "110": { "small_2t": 24930, "medium_4t": 29480, "large_10t": 39150, "trailer_20t": 48870 },
+        "120": { "small_2t": 26680, "medium_4t": 31550, "large_10t": 41880, "trailer_20t": 52230 },
+        "130": { "small_2t": 28440, "medium_4t": 33610, "large_10t": 44610, "trailer_20t": 55580 },
+        "140": { "small_2t": 30190, "medium_4t": 35670, "large_10t": 47340, "trailer_20t": 58930 },
+        "150": { "small_2t": 31940, "medium_4t": 37730, "large_10t": 50070, "trailer_20t": 62290 },
+        "160": { "small_2t": 33690, "medium_4t": 39800, "large_10t": 52800, "trailer_20t": 65640 },
+        "170": { "small_2t": 35450, "medium_4t": 41860, "large_10t": 55530, "trailer_20t": 68990 },
+        "180": { "small_2t": 37200, "medium_4t": 43920, "large_10t": 58260, "trailer_20t": 72350 },
+        "190": { "small_2t": 38950, "medium_4t": 45980, "large_10t": 60990, "trailer_20t": 75700 },
+        "200": { "small_2t": 40700, "medium_4t": 48050, "large_10t": 63720, "trailer_20t": 79050 }
+      },
+      "over_200_increment_20km": { "small_2t": 2780, "medium_4t": 3240, "large_10t": 4240, "trailer_20t": 5220 },
+      "over_500_increment_50km": { "small_2t": 6960, "medium_4t": 8120, "large_10t": 10610, "trailer_20t": 13040 }
+    },
+    "kinki": {
+      "label": "近畿運輸局",
+      "fares_by_km": {
+        "10": { "small_2t": 12810, "medium_4t": 15080, "large_10t": 19920, "trailer_20t": 25480 },
+        "20": { "small_2t": 14000, "medium_4t": 16450, "large_10t": 21700, "trailer_20t": 27670 },
+        "30": { "small_2t": 15090, "medium_4t": 17730, "large_10t": 23370, "trailer_20t": 29720 },
+        "40": { "small_2t": 16170, "medium_4t": 19000, "large_10t": 25040, "trailer_20t": 31780 },
+        "50": { "small_2t": 17250, "medium_4t": 20280, "large_10t": 26720, "trailer_20t": 33830 },
+        "60": { "small_2t": 18870, "medium_4t": 22180, "large_10t": 29210, "trailer_20t": 36890 },
+        "70": { "small_2t": 20480, "medium_4t": 24090, "large_10t": 31710, "trailer_20t": 39950 },
+        "80": { "small_2t": 22100, "medium_4t": 25990, "large_10t": 34210, "trailer_20t": 43010 },
+        "90": { "small_2t": 23720, "medium_4t": 27890, "large_10t": 36700, "trailer_20t": 46070 },
+        "100": { "small_2t": 25340, "medium_4t": 29800, "large_10t": 39200, "trailer_20t": 49140 },
+        "110": { "small_2t": 27320, "medium_4t": 32120, "large_10t": 42250, "trailer_20t": 52870 },
+        "120": { "small_2t": 29300, "medium_4t": 34440, "large_10t": 45300, "trailer_20t": 56610 },
+        "130": { "small_2t": 31280, "medium_4t": 36760, "large_10t": 48340, "trailer_20t": 60340 },
+        "140": { "small_2t": 33260, "medium_4t": 39080, "large_10t": 51390, "trailer_20t": 64080 },
+        "150": { "small_2t": 35240, "medium_4t": 41400, "large_10t": 54440, "trailer_20t": 67810 },
+        "160": { "small_2t": 37220, "medium_4t": 43720, "large_10t": 57490, "trailer_20t": 71550 },
+        "170": { "small_2t": 39200, "medium_4t": 46040, "large_10t": 60530, "trailer_20t": 75280 },
+        "180": { "small_2t": 41180, "medium_4t": 48360, "large_10t": 63580, "trailer_20t": 79020 },
+        "190": { "small_2t": 43160, "medium_4t": 50680, "large_10t": 66630, "trailer_20t": 82750 },
+        "200": { "small_2t": 45140, "medium_4t": 53000, "large_10t": 69680, "trailer_20t": 86490 }
+      },
+      "over_200_increment_20km": { "small_2t": 3150, "medium_4t": 3670, "large_10t": 4810, "trailer_20t": 5930 },
+      "over_500_increment_50km": { "small_2t": 7880, "medium_4t": 9180, "large_10t": 12030, "trailer_20t": 14830 }
+    },
+    "chugoku": {
+      "label": "中国運輸局",
+      "fares_by_km": {
+        "10": { "small_2t": 13090, "medium_4t": 15220, "large_10t": 20070, "trailer_20t": 25450 },
+        "20": { "small_2t": 14340, "medium_4t": 16670, "large_10t": 21970, "trailer_20t": 27800 },
+        "30": { "small_2t": 15480, "medium_4t": 18000, "large_10t": 23720, "trailer_20t": 29960 },
+        "40": { "small_2t": 16630, "medium_4t": 19340, "large_10t": 25480, "trailer_20t": 32120 },
+        "50": { "small_2t": 17770, "medium_4t": 20680, "large_10t": 27230, "trailer_20t": 34290 },
+        "60": { "small_2t": 19480, "medium_4t": 22670, "large_10t": 29850, "trailer_20t": 37520 },
+        "70": { "small_2t": 21190, "medium_4t": 24670, "large_10t": 32470, "trailer_20t": 40750 },
+        "80": { "small_2t": 22900, "medium_4t": 26660, "large_10t": 35080, "trailer_20t": 43980 },
+        "90": { "small_2t": 24610, "medium_4t": 28660, "large_10t": 37700, "trailer_20t": 47210 },
+        "100": { "small_2t": 26320, "medium_4t": 30650, "large_10t": 40320, "trailer_20t": 50440 },
+        "110": { "small_2t": 28410, "medium_4t": 33090, "large_10t": 43520, "trailer_20t": 54380 },
+        "120": { "small_2t": 30500, "medium_4t": 35520, "large_10t": 46710, "trailer_20t": 58310 },
+        "130": { "small_2t": 32590, "medium_4t": 37960, "large_10t": 49910, "trailer_20t": 62240 },
+        "140": { "small_2t": 34690, "medium_4t": 40390, "large_10t": 53110, "trailer_20t": 66180 },
+        "150": { "small_2t": 36780, "medium_4t": 42830, "large_10t": 56310, "trailer_20t": 70110 },
+        "160": { "small_2t": 38870, "medium_4t": 45260, "large_10t": 59510, "trailer_20t": 74040 },
+        "170": { "small_2t": 40960, "medium_4t": 47700, "large_10t": 62700, "trailer_20t": 77980 },
+        "180": { "small_2t": 43050, "medium_4t": 50130, "large_10t": 65900, "trailer_20t": 81910 },
+        "190": { "small_2t": 45140, "medium_4t": 52570, "large_10t": 69100, "trailer_20t": 85840 },
+        "200": { "small_2t": 47230, "medium_4t": 55000, "large_10t": 72300, "trailer_20t": 89780 }
+      },
+      "over_200_increment_20km": { "small_2t": 3320, "medium_4t": 3880, "large_10t": 5080, "trailer_20t": 6270 },
+      "over_500_increment_50km": { "small_2t": 8310, "medium_4t": 9700, "large_10t": 12710, "trailer_20t": 15690 }
+    },
+    "shikoku": {
+      "label": "四国運輸局",
+      "fares_by_km": {
+        "10": { "small_2t": 13610, "medium_4t": 15830, "large_10t": 20890, "trailer_20t": 26470 },
+        "20": { "small_2t": 14900, "medium_4t": 17330, "large_10t": 22860, "trailer_20t": 28900 },
+        "30": { "small_2t": 16090, "medium_4t": 18710, "large_10t": 24680, "trailer_20t": 31140 },
+        "40": { "small_2t": 17270, "medium_4t": 20100, "large_10t": 26490, "trailer_20t": 33380 },
+        "50": { "small_2t": 18460, "medium_4t": 21480, "large_10t": 28310, "trailer_20t": 35620 },
+        "60": { "small_2t": 20230, "medium_4t": 23550, "large_10t": 31030, "trailer_20t": 38980 },
+        "70": { "small_2t": 22000, "medium_4t": 25610, "large_10t": 33750, "trailer_20t": 42330 },
+        "80": { "small_2t": 23770, "medium_4t": 27680, "large_10t": 36470, "trailer_20t": 45690 },
+        "90": { "small_2t": 25550, "medium_4t": 29740, "large_10t": 39190, "trailer_20t": 49040 },
+        "100": { "small_2t": 27320, "medium_4t": 31810, "large_10t": 41910, "trailer_20t": 52400 },
+        "110": { "small_2t": 29490, "medium_4t": 34330, "large_10t": 45230, "trailer_20t": 56490 },
+        "120": { "small_2t": 31650, "medium_4t": 36850, "large_10t": 48550, "trailer_20t": 60570 },
+        "130": { "small_2t": 33820, "medium_4t": 39370, "large_10t": 51870, "trailer_20t": 64660 },
+        "140": { "small_2t": 35980, "medium_4t": 41890, "large_10t": 55190, "trailer_20t": 68740 },
+        "150": { "small_2t": 38150, "medium_4t": 44410, "large_10t": 58510, "trailer_20t": 72830 },
+        "160": { "small_2t": 40310, "medium_4t": 46930, "large_10t": 61830, "trailer_20t": 76910 },
+        "170": { "small_2t": 42480, "medium_4t": 49450, "large_10t": 65150, "trailer_20t": 81000 },
+        "180": { "small_2t": 44640, "medium_4t": 51970, "large_10t": 68470, "trailer_20t": 85080 },
+        "190": { "small_2t": 46810, "medium_4t": 54490, "large_10t": 71790, "trailer_20t": 89170 },
+        "200": { "small_2t": 48970, "medium_4t": 57010, "large_10t": 75110, "trailer_20t": 93250 }
+      },
+      "over_200_increment_20km": { "small_2t": 3440, "medium_4t": 4010, "large_10t": 5250, "trailer_20t": 6470 },
+      "over_500_increment_50km": { "small_2t": 8610, "medium_4t": 10030, "large_10t": 13120, "trailer_20t": 16190 }
+    },
+    "kyushu": {
+      "label": "九州運輸局",
+      "fares_by_km": {
+        "10": { "small_2t": 12190, "medium_4t": 13960, "large_10t": 18800, "trailer_20t": 24270 },
+        "20": { "small_2t": 13320, "medium_4t": 15310, "large_10t": 20700, "trailer_20t": 26590 },
+        "30": { "small_2t": 14360, "medium_4t": 16540, "large_10t": 22450, "trailer_20t": 28720 },
+        "40": { "small_2t": 15390, "medium_4t": 17770, "large_10t": 24200, "trailer_20t": 30850 },
+        "50": { "small_2t": 16430, "medium_4t": 19000, "large_10t": 25960, "trailer_20t": 32980 },
+        "60": { "small_2t": 18000, "medium_4t": 20860, "large_10t": 28600, "trailer_20t": 36190 },
+        "70": { "small_2t": 19570, "medium_4t": 22730, "large_10t": 31240, "trailer_20t": 39390 },
+        "80": { "small_2t": 21140, "medium_4t": 24590, "large_10t": 33870, "trailer_20t": 42600 },
+        "90": { "small_2t": 22710, "medium_4t": 26450, "large_10t": 36510, "trailer_20t": 45800 },
+        "100": { "small_2t": 24280, "medium_4t": 28320, "large_10t": 39150, "trailer_20t": 49010 },
+        "110": { "small_2t": 26230, "medium_4t": 30620, "large_10t": 42400, "trailer_20t": 52970 },
+        "120": { "small_2t": 28180, "medium_4t": 32920, "large_10t": 45650, "trailer_20t": 56930 },
+        "130": { "small_2t": 30130, "medium_4t": 35220, "large_10t": 48900, "trailer_20t": 60890 },
+        "140": { "small_2t": 32080, "medium_4t": 37520, "large_10t": 52150, "trailer_20t": 64850 },
+        "150": { "small_2t": 34030, "medium_4t": 39820, "large_10t": 55400, "trailer_20t": 68810 },
+        "160": { "small_2t": 35980, "medium_4t": 42120, "large_10t": 58650, "trailer_20t": 72770 },
+        "170": { "small_2t": 37930, "medium_4t": 44420, "large_10t": 61900, "trailer_20t": 76730 },
+        "180": { "small_2t": 39880, "medium_4t": 46720, "large_10t": 65150, "trailer_20t": 80690 },
+        "190": { "small_2t": 41830, "medium_4t": 49020, "large_10t": 68400, "trailer_20t": 84650 },
+        "200": { "small_2t": 43780, "medium_4t": 51320, "large_10t": 71650, "trailer_20t": 88610 }
+      },
+      "over_200_increment_20km": { "small_2t": 3040, "medium_4t": 3580, "large_10t": 4910, "trailer_20t": 6070 },
+      "over_500_increment_50km": { "small_2t": 7610, "medium_4t": 8940, "large_10t": 12280, "trailer_20t": 15170 }
+    }
+  }
+}

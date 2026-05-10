@@ -17,6 +17,8 @@ def measure_driving_distance(
     delivery_address: str,
     vehicle_type: Optional[str],
     posted_fare: object = None,
+    pickup_prefecture: Optional[str] = None,
+    detail_address_missing: bool = False,
 ) -> dict[str, Any]:
     if not settings.maps_api_key:
         return distance_response(
@@ -24,8 +26,10 @@ def measure_driving_distance(
             distance_source=None,
             vehicle_type=vehicle_type,
             posted_fare=posted_fare,
+            pickup_prefecture=pickup_prefecture or pickup_address,
             status="api_key_missing",
             note="距離取得APIが設定されていません",
+            detail_address_missing=detail_address_missing,
         )
 
     try:
@@ -40,8 +44,10 @@ def measure_driving_distance(
             distance_source="google_maps",
             vehicle_type=vehicle_type,
             posted_fare=posted_fare,
+            pickup_prefecture=pickup_prefecture or pickup_address,
             status=exc.status,
             note=exc.safe_note,
+            detail_address_missing=detail_address_missing,
         )
 
     return distance_response(
@@ -49,8 +55,10 @@ def measure_driving_distance(
         distance_source="google_maps",
         vehicle_type=vehicle_type,
         posted_fare=posted_fare,
+        pickup_prefecture=pickup_prefecture or pickup_address,
         status=None,
         note=None,
+        detail_address_missing=detail_address_missing,
     )
 
 
@@ -104,12 +112,21 @@ def distance_response(
     distance_source: Optional[str],
     vehicle_type: Optional[str],
     posted_fare: object,
+    pickup_prefecture: Optional[str],
     status: Optional[str],
     note: Optional[str],
+    detail_address_missing: bool = False,
 ) -> dict[str, Any]:
-    fare = estimate_standard_fare(distance_km=distance_km, vehicle_type=vehicle_type, posted_fare=posted_fare)
+    fare = estimate_standard_fare(
+        distance_km=distance_km,
+        vehicle_type=vehicle_type,
+        posted_fare=posted_fare,
+        pickup_prefecture=pickup_prefecture,
+    )
     fare_status = status or fare["fare_calc_status"]
     fare_note = note or fare["fare_calc_note"]
+    if detail_address_missing:
+        fare_note = append_note(fare_note, "詳細住所が未入力のため、市区町村単位での概算距離です。")
     return {
         "distance_km": distance_km,
         "distance_text": distance_text(distance_km),
@@ -118,6 +135,14 @@ def distance_response(
         "fare_calc_status": fare_status,
         "fare_calc_note": fare_note,
     }
+
+
+def append_note(note: Optional[str], addition: str) -> str:
+    if note and addition in note:
+        return note
+    if note:
+        return f"{note.rstrip('。')}。{addition}"
+    return addition
 
 
 def distance_text(distance_km: Optional[float]) -> Optional[str]:
@@ -132,4 +157,3 @@ class DistanceMeasureError(Exception):
         super().__init__(status)
         self.status = status
         self.safe_note = safe_note
-

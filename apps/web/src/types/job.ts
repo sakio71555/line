@@ -6,6 +6,8 @@ export type JobStatus =
   | "in_progress"
   | "completed"
   | "cancelled"
+  | "closed"
+  | "deleted"
   | "hidden";
 
 export type AnalysisStatus =
@@ -17,7 +19,16 @@ export type AnalysisStatus =
   | "form_submitted";
 
 export type SourceType = "line_group" | "liff_form" | "admin_manual" | "line_history_import" | null;
-export type JobCategory = "spot" | "charter" | "regular" | "work" | "other" | null;
+export type PostingType = "delivery" | "other" | null;
+export type JobCategory =
+  | "spot"
+  | "charter"
+  | "regular"
+  | "work"
+  | "driver_recruitment"
+  | "referral_request"
+  | "other"
+  | null;
 
 export type Job = {
   id: string;
@@ -27,6 +38,10 @@ export type Job = {
   source_user_id?: string | null;
   source_message_id?: string | null;
   raw_text?: string | null;
+  posting_type?: PostingType;
+  title?: string | null;
+  free_text?: string | null;
+  target_area?: string | null;
   job_category: JobCategory;
   pickup_location: string | null;
   delivery_location: string | null;
@@ -53,11 +68,13 @@ export type Job = {
   vehicle_count: number | null;
   cargo_type: string | null;
   price: number | null;
+  posted_fare_yen?: number | null;
   distance_km?: number | null;
   distance_text?: string | null;
   distance_source?: string | null;
   standard_fare_yen?: number | null;
   fare_ratio_percent?: number | null;
+  fare_ratio_text?: string | null;
   fare_judgement?: string | null;
   fare_calc_status?: string | null;
   fare_calc_note?: string | null;
@@ -94,6 +111,9 @@ export type Job = {
   closed_reason?: string | null;
   closed_reported_by_line_user_id?: string | null;
   closed_reported_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by_line_user_id?: string | null;
+  delete_reason?: string | null;
   created_at: string;
   updated_at?: string | null;
 };
@@ -169,10 +189,12 @@ export const jobStatusLabels: Record<JobStatus, string> = {
   needs_review: "確認待ち",
   open: "募集中",
   negotiating: "交渉中",
-  assigned: "手配済",
-  in_progress: "稼働中",
+  assigned: "手配完了",
+  in_progress: "進行中",
   completed: "完了",
   cancelled: "キャンセル",
+  closed: "募集終了",
+  deleted: "削除済み",
   hidden: "非公開",
 };
 
@@ -180,6 +202,8 @@ export const jobCategoryLabels: Record<Exclude<JobCategory, null>, string> = {
   spot: "スポット便",
   charter: "チャーター",
   regular: "定期便",
-  work: "作業案件",
+  work: "常用",
+  driver_recruitment: "ドライバー募集",
+  referral_request: "案件紹介依頼",
   other: "その他",
 };

@@ -7,26 +7,51 @@ export type AdminAuthContext = {
 };
 
 export type AdminJobUpdatePayload = {
+  posting_type?: Job["posting_type"];
+  job_category: Job["job_category"];
+  title?: string | null;
+  free_text?: string | null;
+  target_area?: string | null;
   pickup_location: string | null;
   delivery_location: string | null;
   pickup_prefecture: string | null;
+  pickup_city: string | null;
+  pickup_address: string | null;
   delivery_prefecture: string | null;
+  delivery_city: string | null;
+  delivery_address: string | null;
+  pickup_date: string | null;
+  pickup_time_text: string | null;
   scheduled_date: string | null;
   scheduled_time_text: string | null;
   delivery_date: string | null;
+  delivery_time_text: string | null;
   vehicle_type: string | null;
   vehicle_count: number | null;
   cargo_type: string | null;
   price: number | null;
+  posted_fare_yen?: number | null;
+  distance_km?: number | null;
+  distance_text?: string | null;
+  distance_source?: string | null;
+  standard_fare_yen?: number | null;
+  fare_ratio_percent?: number | null;
+  fare_ratio_text?: string | null;
+  fare_judgement?: string | null;
+  fare_calc_status?: string | null;
+  fare_calc_note?: string | null;
+  fare_region?: string | null;
+  fare_vehicle_class?: string | null;
+  fare_vehicle_label?: string | null;
   tax_type: "税別" | "税込" | "不明" | null;
   fee_note: string | null;
   highway_fee_note: string | null;
   budget_note: string | null;
   company_name: string | null;
   contact_name: string | null;
+  phone_number: string | null;
   phone_numbers: string[] | null;
   notes: string | null;
-  status: JobStatus;
 };
 
 function adminUrl(path: string): string {
@@ -115,6 +140,45 @@ export async function hideAdminJob(jobId: string, context: AdminAuthContext = {}
     adminUrl(withAdminScope(endpoint)),
     {
       method: "POST",
+      headers: adminAuthHeaders(context),
+    },
+    { endpoint, scope: "mine", jobId },
+  );
+  return data.job;
+}
+
+export async function closeAdminJob(jobId: string, context: AdminAuthContext = {}): Promise<Job> {
+  const endpoint = `/admin/jobs/${jobId}/close`;
+  const data = await requestJson<{ job: Job }>(
+    adminUrl(withAdminScope(endpoint)),
+    {
+      method: "POST",
+      headers: adminAuthHeaders(context),
+    },
+    { endpoint, scope: "mine", jobId },
+  );
+  return data.job;
+}
+
+export async function arrangeAdminJob(jobId: string, context: AdminAuthContext = {}): Promise<Job> {
+  const endpoint = `/admin/jobs/${jobId}/arrange`;
+  const data = await requestJson<{ job: Job }>(
+    adminUrl(withAdminScope(endpoint)),
+    {
+      method: "POST",
+      headers: adminAuthHeaders(context),
+    },
+    { endpoint, scope: "mine", jobId },
+  );
+  return data.job;
+}
+
+export async function deleteAdminJob(jobId: string, context: AdminAuthContext = {}): Promise<Job> {
+  const endpoint = `/admin/jobs/${jobId}`;
+  const data = await requestJson<{ job: Job }>(
+    adminUrl(withAdminScope(endpoint)),
+    {
+      method: "DELETE",
       headers: adminAuthHeaders(context),
     },
     { endpoint, scope: "mine", jobId },

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import httpx
@@ -12,7 +13,7 @@ os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key")
 os.environ.setdefault("LINE_CHANNEL_SECRET", "test-line-channel-secret")
 
 from apps.api.app.main import app  # noqa: E402
-from apps.api.app.services.supabase import SupabaseRestClient  # noqa: E402
+from apps.api.app.services.supabase import SupabaseRestClient, delete_admin_job  # noqa: E402
 
 
 class AdminJobsTest(unittest.TestCase):
@@ -53,6 +54,8 @@ class AdminJobsTest(unittest.TestCase):
         params = get.call_args.kwargs["params"]
         self.assertIn("open", params["status"])
         self.assertIn("needs_review", params["status"])
+        self.assertIn("closed", params["status"])
+        self.assertEqual(params["deleted_at"], "is.null")
         self.assertIn("created_at.desc", params["order"])
         self.assertGreaterEqual(int(params["limit"]), 100)
 
@@ -129,10 +132,11 @@ class AdminJobsTest(unittest.TestCase):
     def test_mine_update_allows_owner_job(self) -> None:
         updated = job_row(
             job_id="my-job",
-            status="assigned",
+            status="open",
             review_required=False,
             created_by_line_user_id="Uowner",
         )
+        updated["vehicle_type"] = "2t"
 
         with (
             patch(
@@ -148,11 +152,11 @@ class AdminJobsTest(unittest.TestCase):
             response = self.client.patch(
                 "/admin/jobs/my-job?scope=mine",
                 headers={"Authorization": "Bearer test-id-token"},
-                json={"status": "assigned"},
+                json={"vehicle_type": "2t"},
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["job"]["status"], "assigned")
+        self.assertEqual(response.json()["job"]["vehicle_type"], "2t")
         update_job.assert_called_once()
 
     def test_mine_update_forbids_other_owner_job(self) -> None:
@@ -170,24 +174,297 @@ class AdminJobsTest(unittest.TestCase):
             response = self.client.patch(
                 "/admin/jobs/other-job?scope=mine",
                 headers={"Authorization": "Bearer test-id-token"},
-                json={"status": "assigned"},
+                json={"vehicle_type": "2t"},
             )
 
         self.assertEqual(response.status_code, 403)
         update_job.assert_not_called()
 
-    def test_all_scope_update_keeps_existing_admin_behavior_without_token(self) -> None:
-        updated = job_row(job_id="admin-job", status="completed", review_required=False)
+    def test_mine_update_requires_line_login(self) -> None:
+        with patch("apps.api.app.routers.admin_jobs.update_admin_job") as update_job:
+            response = self.client.patch(
+                "/admin/jobs/my-job?scope=mine",
+                json={"vehicle_type": "2t"},
+            )
 
-        with patch("apps.api.app.routers.admin_jobs.update_admin_job", return_value=updated) as update_job:
+        self.assertEqual(response.status_code, 401)
+        update_job.assert_not_called()
+
+    def test_mine_update_rejects_owner_column_changes(self) -> None:
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch("apps.api.app.routers.admin_jobs.update_admin_job") as update_job,
+        ):
+            response = self.client.patch(
+                "/admin/jobs/my-job?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+                json={"created_by_line_user_id": "Uother"},
+            )
+
+        self.assertEqual(response.status_code, 422)
+        update_job.assert_not_called()
+
+    def test_all_scope_update_requires_line_login_for_safety(self) -> None:
+        with patch("apps.api.app.routers.admin_jobs.update_admin_job") as update_job:
             response = self.client.patch(
                 "/admin/jobs/admin-job?scope=all",
-                json={"status": "completed"},
+                json={"vehicle_type": "4t"},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        update_job.assert_not_called()
+
+    def test_mine_update_accepts_distance_fields(self) -> None:
+        updated = job_row(
+            job_id="my-job",
+            status="open",
+            review_required=False,
+            created_by_line_user_id="Uowner",
+        )
+        updated["standard_fare_yen"] = 21650
+        updated["fare_ratio_percent"] = 78.5
+        updated["fare_ratio_text"] = "79%"
+        updated["fare_judgement"] = "やや安い"
+
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="my-job", created_by_line_user_id="Uowner"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.update_admin_job", return_value=updated) as update_job,
+        ):
+            response = self.client.patch(
+                "/admin/jobs/my-job?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+                json={
+                    "standard_fare_yen": 21650,
+                    "fare_ratio_percent": 78.5,
+                    "fare_ratio_text": "79%",
+                    "fare_judgement": "やや安い",
+                    "fare_vehicle_class": "kei_cargo",
+                },
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["job"]["status"], "completed")
-        update_job.assert_called_once()
+        self.assertEqual(response.json()["job"]["fare_judgement"], "やや安い")
+        payload = update_job.call_args.args[2]
+        self.assertEqual(payload["standard_fare_yen"], 21650)
+        self.assertEqual(payload["fare_ratio_text"], "79%")
+        self.assertEqual(payload["fare_vehicle_class"], "kei_cargo")
+
+    def test_mine_close_allows_owner_job(self) -> None:
+        closed = job_row(
+            job_id="my-job",
+            status="closed",
+            review_required=False,
+            created_by_line_user_id="Uowner",
+        )
+
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="my-job", created_by_line_user_id="Uowner"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.set_admin_job_status", return_value=closed) as set_status,
+        ):
+            response = self.client.post(
+                "/admin/jobs/my-job/close?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["job"]["status"], "closed")
+        self.assertEqual(set_status.call_args.kwargs["new_status"], "closed")
+
+    def test_mine_close_forbids_other_owner_job(self) -> None:
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="other-job", created_by_line_user_id="Uother"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.set_admin_job_status") as set_status,
+        ):
+            response = self.client.post(
+                "/admin/jobs/other-job/close?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        set_status.assert_not_called()
+
+    def test_mine_close_requires_line_login(self) -> None:
+        with patch("apps.api.app.routers.admin_jobs.set_admin_job_status") as set_status:
+            response = self.client.post("/admin/jobs/my-job/close?scope=mine")
+
+        self.assertEqual(response.status_code, 401)
+        set_status.assert_not_called()
+
+    def test_mine_arrange_allows_owner_job(self) -> None:
+        arranged = job_row(
+            job_id="my-job",
+            status="assigned",
+            review_required=False,
+            created_by_line_user_id="Uowner",
+        )
+
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="my-job", created_by_line_user_id="Uowner"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.set_admin_job_status", return_value=arranged) as set_status,
+        ):
+            response = self.client.post(
+                "/admin/jobs/my-job/arrange?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["job"]["status"], "assigned")
+        self.assertEqual(set_status.call_args.kwargs["new_status"], "assigned")
+
+    def test_mine_arrange_forbids_other_owner_job(self) -> None:
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="other-job", created_by_line_user_id="Uother"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.set_admin_job_status") as set_status,
+        ):
+            response = self.client.post(
+                "/admin/jobs/other-job/arrange?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        set_status.assert_not_called()
+
+    def test_mine_arrange_requires_line_login(self) -> None:
+        with patch("apps.api.app.routers.admin_jobs.set_admin_job_status") as set_status:
+            response = self.client.post("/admin/jobs/my-job/arrange?scope=mine")
+
+        self.assertEqual(response.status_code, 401)
+        set_status.assert_not_called()
+
+    def test_mine_delete_allows_owner_job(self) -> None:
+        deleted = job_row(
+            job_id="my-job",
+            status="open",
+            review_required=False,
+            created_by_line_user_id="Uowner",
+        )
+
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="my-job", created_by_line_user_id="Uowner"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.delete_admin_job", return_value=deleted) as delete_job,
+        ):
+            response = self.client.delete(
+                "/admin/jobs/my-job?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["job"]["id"], "my-job")
+        delete_job.assert_called_once()
+        self.assertEqual(delete_job.call_args.kwargs["deleted_by_line_user_id"], "Uowner")
+
+    def test_mine_delete_forbids_other_owner_job(self) -> None:
+        with (
+            patch(
+                "apps.api.app.routers.admin_jobs.verify_line_id_token",
+                return_value={"line_user_id": "Uowner", "display_name": "Owner"},
+            ),
+            patch(
+                "apps.api.app.routers.admin_jobs.fetch_admin_job_by_id",
+                return_value=job_row(job_id="other-job", created_by_line_user_id="Uother"),
+            ),
+            patch("apps.api.app.routers.admin_jobs.delete_admin_job") as delete_job,
+        ):
+            response = self.client.delete(
+                "/admin/jobs/other-job?scope=mine",
+                headers={"Authorization": "Bearer test-id-token"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        delete_job.assert_not_called()
+
+    def test_mine_delete_requires_line_login(self) -> None:
+        with patch("apps.api.app.routers.admin_jobs.delete_admin_job") as delete_job:
+            response = self.client.delete("/admin/jobs/my-job?scope=mine")
+
+        self.assertEqual(response.status_code, 401)
+        delete_job.assert_not_called()
+
+    def test_closed_status_migration_extends_jobs_constraint(self) -> None:
+        sql = Path("supabase/migrations/014_jobs_closed_status.sql").read_text(encoding="utf-8")
+
+        self.assertIn("'closed'", sql)
+        self.assertIn("jobs_status_check", sql)
+
+    def test_logical_delete_migration_adds_deleted_status_and_columns(self) -> None:
+        sql = Path("supabase/migrations/017_jobs_logical_delete_status_cleanup.sql").read_text(encoding="utf-8")
+
+        self.assertIn("deleted_at", sql)
+        self.assertIn("deleted_by_line_user_id", sql)
+        self.assertIn("delete_reason", sql)
+        self.assertIn("'deleted'", sql)
+        self.assertIn("deleted_at is null", sql)
+
+    def test_delete_admin_job_marks_row_deleted_without_physical_delete(self) -> None:
+        old = job_row(job_id="my-job", status="open", created_by_line_user_id="Uowner")
+        updated = {**old, "status": "deleted", "deleted_at": "2026-05-10T00:00:00+00:00"}
+
+        with (
+            patch("apps.api.app.services.supabase.fetch_admin_job_by_id", return_value=old),
+            patch("apps.api.app.services.supabase.update_admin_job", return_value=updated) as update_job,
+            patch("apps.api.app.services.supabase.insert_job_status_history") as history,
+            patch("apps.api.app.services.supabase.delete_rows") as delete_rows,
+        ):
+            result = delete_admin_job(
+                self.supabase,
+                "my-job",
+                deleted_by_line_user_id="Uowner",
+                delete_reason="本人による投稿削除",
+            )
+
+        self.assertEqual(result["status"], "deleted")
+        payload = update_job.call_args.args[2]
+        self.assertEqual(payload["status"], "deleted")
+        self.assertIn("deleted_at", payload)
+        self.assertEqual(payload["deleted_by_line_user_id"], "Uowner")
+        self.assertEqual(payload["delete_reason"], "本人による投稿削除")
+        history.assert_called_once()
+        delete_rows.assert_not_called()
 
 
 def job_row(

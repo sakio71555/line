@@ -144,7 +144,16 @@ def authorize_status_update_action(
     job_id: Optional[str] = None,
 ) -> dict[str, str | None]:
     if scope != "mine":
-        return {"line_user_id": None, "display_name": None}
+        logger.info(
+            "Admin status update authorization rejected endpoint=/admin/status-updates scope=%s status_update_id=%s reason=mine_scope_required has_authorization=%s",
+            scope,
+            status_update_id,
+            bool(authorization),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="管理操作にはLINEログイン確認が必要です",
+        )
 
     try:
         auth_result = verify_line_id_token(settings, bearer_token(authorization))

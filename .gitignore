@@ -20,3 +20,4 @@ build/
 # Local imported data may contain phone numbers, emails, or LINE history.
 data/*
 !data/.gitkeep
+!data/standard_truck_fares_2024.json
