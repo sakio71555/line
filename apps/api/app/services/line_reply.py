@@ -42,6 +42,33 @@ def reply_menu_message(settings: Settings, reply_token: str | None, session_id: 
         raise LineReplyError(f"LINE reply request failed with status {response.status_code}")
 
 
+def reply_help_message(settings: Settings, reply_token: str | None) -> None:
+    if not reply_token:
+        raise LineReplyError("LINE reply token is missing")
+    if not settings.line_channel_access_token:
+        raise LineReplyError("LINE channel access token is not configured")
+
+    payload = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": build_help_text()}],
+    }
+    try:
+        response = httpx.post(
+            LINE_REPLY_URL,
+            headers={
+                "Authorization": f"Bearer {settings.line_channel_access_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+    except httpx.HTTPError as exc:
+        raise LineReplyError(f"LINE reply request failed: {exc.__class__.__name__}") from exc
+
+    if response.status_code >= 400:
+        raise LineReplyError(f"LINE reply request failed with status {response.status_code}")
+
+
 def build_menu_flex_message(settings: Settings, session_id: str | None = None) -> dict[str, Any]:
     return {
         "type": "flex",
@@ -116,3 +143,31 @@ def append_query(url: str, params: dict[str, str]) -> str:
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query.update(params)
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
+def build_help_text() -> str:
+    return "\n".join(
+        [
+            "LINE Transport Matching 使い方",
+            "",
+            "【案件を見る】",
+            "個別チャットのリッチメニューから「案件一覧」を開きます。募集中・終了案件を切り替えて確認できます。",
+            "",
+            "【案件を出す】",
+            "「案件を投稿」から通常配送案件またはその他案件を入力します。投稿後は案件一覧に掲載され、投稿元グループへ通知されます。",
+            "",
+            "【空車を登録・確認】",
+            "「空車を登録」から空車情報を登録できます。案件一覧画面の「空車一覧」で確認できます。",
+            "",
+            "【自分の投稿を管理】",
+            "「管理」では自分が投稿した案件だけを修正、手配完了、募集終了、削除できます。本人確認のためLINEアプリ内で開いてください。",
+            "",
+            "【企業検索】",
+            "「企業検索」から名刺データを会社名、担当者名、電話番号などで検索できます。",
+            "",
+            "【グループで使う言葉】",
+            "メニュー / 案件投稿 / 空車登録 / 案件一覧 / フォーム / 企業検索",
+            "",
+            "困ったときは、個別チャットで「メニュー」または「使い方」と送ってください。",
+        ]
+    )

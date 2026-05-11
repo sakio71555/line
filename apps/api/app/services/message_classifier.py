@@ -124,6 +124,9 @@ def classify_text(raw_text: str) -> ClassificationResult:
     if is_menu_request_text(compact):
         return ClassificationResult("menu_request", 0.98, "LIFF menu request keyword")
 
+    if is_help_request_text(compact):
+        return ClassificationResult("help_request", 0.98, "Usage guide request keyword")
+
     if any(keyword in compact for keyword in ["送信を取り消しました", "メッセージの送信を取り消しました"]):
         return ClassificationResult("unsend_event", 0.9, "Unsend notice text")
 
@@ -274,6 +277,10 @@ def normalize_text(raw_text: str) -> str:
 
 def is_menu_request_text(compact_text: str) -> bool:
     return compact_text in {"メニュー", "案件投稿", "空車登録", "案件一覧", "フォーム", "企業検索"}
+
+
+def is_help_request_text(compact_text: str) -> bool:
+    return compact_text.lower() in {"使い方", "ヘルプ", "help", "操作方法", "利用方法"}
 
 
 def extract_source_group_id(source: dict[str, Any]) -> Optional[str]:

@@ -6,7 +6,7 @@ from typing import Any, Optional
 import httpx
 
 from ..core.config import Settings
-from .line_reply import build_menu_flex_message
+from .line_reply import build_help_text, build_menu_flex_message
 
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 JOB_CATEGORY_LABELS = {
@@ -65,6 +65,33 @@ def push_menu_message(settings: Settings, user_id: Optional[str], session_id: Op
     payload = {
         "to": user_id,
         "messages": [build_menu_flex_message(settings, session_id=session_id)],
+    }
+    try:
+        response = httpx.post(
+            LINE_PUSH_URL,
+            headers={
+                "Authorization": f"Bearer {settings.line_channel_access_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+    except httpx.HTTPError as exc:
+        raise LinePushError(f"LINE push request failed: {exc.__class__.__name__}") from exc
+
+    if response.status_code >= 400:
+        raise LinePushError(f"LINE push request failed with status {response.status_code}")
+
+
+def push_help_message(settings: Settings, user_id: Optional[str]) -> None:
+    if not user_id:
+        raise LinePushError("LINE user id is missing")
+    if not settings.line_channel_access_token:
+        raise LinePushError("LINE channel access token is not configured")
+
+    payload = {
+        "to": user_id,
+        "messages": [{"type": "text", "text": build_help_text()}],
     }
     try:
         response = httpx.post(

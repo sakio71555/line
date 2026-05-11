@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from apps.api.app.routers.line_webhook import process_classified_message
 from apps.api.app.services.line_push import LinePushError
-from apps.api.app.services.line_reply import build_liff_url, build_menu_flex_message
+from apps.api.app.services.line_reply import build_help_text, build_liff_url, build_menu_flex_message
 from apps.api.app.services.message_classifier import classify_text
 from apps.api.app.services.supabase import create_liff_session
 
@@ -16,6 +16,11 @@ class LineMenuTest(unittest.TestCase):
         for keyword in ["メニュー", "案件投稿", "空車登録", "案件一覧", "フォーム", "企業検索"]:
             with self.subTest(keyword=keyword):
                 self.assertEqual(classify_text(keyword).message_type, "menu_request")
+
+    def test_help_keywords_are_classified_as_help_request(self) -> None:
+        for keyword in ["使い方", "ヘルプ", "help", "操作方法", "利用方法"]:
+            with self.subTest(keyword=keyword):
+                self.assertEqual(classify_text(keyword).message_type, "help_request")
 
     def test_existing_classification_examples_still_route(self) -> None:
         self.assertEqual(
@@ -130,6 +135,66 @@ class LineMenuTest(unittest.TestCase):
         create_session.assert_not_called()
         push_menu.assert_not_called()
         reply_menu.assert_called_once_with(settings, "reply-token", session_id=None)
+
+    def test_help_text_explains_main_operations(self) -> None:
+        text = build_help_text()
+
+        for phrase in ["案件を見る", "案件を出す", "空車を登録", "自分の投稿を管理", "企業検索"]:
+            self.assertIn(phrase, text)
+
+    def test_group_help_request_pushes_private_help_without_creating_domain_records(self) -> None:
+        settings = object()
+        with (
+            patch("apps.api.app.routers.line_webhook.push_help_message") as push_help,
+            patch("apps.api.app.routers.line_webhook.reply_help_message") as reply_help,
+            patch("apps.api.app.routers.line_webhook.create_job_from_line_message") as create_job,
+            patch("apps.api.app.routers.line_webhook.create_vehicle_availability") as create_vehicle,
+            patch("apps.api.app.routers.line_webhook.create_status_update_from_line_message") as create_status,
+        ):
+            did_process = process_classified_message(
+                supabase=object(),
+                line_message={
+                    "id": "line-message-id",
+                    "raw_text": "使い方",
+                    "source_group_id": "Cgroup",
+                    "source_user_id": "Uuser",
+                },
+                line_user=None,
+                message_type="help_request",
+                settings=settings,
+                reply_token="reply-token",
+            )
+
+        self.assertTrue(did_process)
+        push_help.assert_called_once_with(settings, "Uuser")
+        reply_help.assert_not_called()
+        create_job.assert_not_called()
+        create_vehicle.assert_not_called()
+        create_status.assert_not_called()
+
+    def test_direct_chat_help_request_replies_in_place(self) -> None:
+        settings = object()
+        with (
+            patch("apps.api.app.routers.line_webhook.push_help_message") as push_help,
+            patch("apps.api.app.routers.line_webhook.reply_help_message") as reply_help,
+        ):
+            did_process = process_classified_message(
+                supabase=object(),
+                line_message={
+                    "id": "line-message-id",
+                    "raw_text": "使い方",
+                    "source_group_id": "Uuser",
+                    "source_user_id": "Uuser",
+                },
+                line_user=None,
+                message_type="help_request",
+                settings=settings,
+                reply_token="reply-token",
+            )
+
+        self.assertTrue(did_process)
+        push_help.assert_not_called()
+        reply_help.assert_called_once_with(settings, "reply-token")
 
     def test_group_menu_push_failure_is_recorded_without_raising(self) -> None:
         settings = object()

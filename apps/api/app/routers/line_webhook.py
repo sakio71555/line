@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from ..core.config import Settings, get_settings
 from ..core.security import verify_line_signature
-from ..services.line_push import LinePushError, push_menu_message
-from ..services.line_reply import reply_menu_message
+from ..services.line_push import LinePushError, push_help_message, push_menu_message
+from ..services.line_reply import reply_help_message, reply_menu_message
 from ..services.line_profile import fetch_line_profile
 from ..services.message_classifier import (
     build_line_job_payload,
@@ -160,6 +160,15 @@ def process_classified_message(
         )
         return True
 
+    if message_type == "help_request":
+        handle_help_request(
+            supabase=supabase,
+            line_message=line_message,
+            settings=settings,
+            reply_token=reply_token,
+        )
+        return True
+
     if message_type in {"job_request", "regular_job", "work_job"}:
         create_job_from_line_message(
             supabase,
@@ -233,6 +242,32 @@ def handle_menu_request(
         return
 
     reply_menu_message(settings, reply_token, session_id=None)
+
+
+def handle_help_request(
+    *,
+    supabase,
+    line_message: dict[str, Any],
+    settings: Settings,
+    reply_token: Optional[str],
+) -> None:
+    source_group_id = line_message.get("source_group_id")
+    source_user_id = line_message.get("source_user_id")
+    if is_group_or_room_source(source_group_id):
+        try:
+            push_help_message(
+                settings,
+                source_user_id if isinstance(source_user_id, str) else None,
+            )
+        except LinePushError as exc:
+            mark_line_message_processed(
+                supabase,
+                line_message["id"],
+                processing_error=exc.__class__.__name__,
+            )
+        return
+
+    reply_help_message(settings, reply_token)
 
 
 def is_group_or_room_source(value: object) -> bool:
